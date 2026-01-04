@@ -252,6 +252,20 @@
       try { bgMusic.load(); } catch(_) {}
     }
 
+    // ===== DEBUG HOOK (чтобы index мог видеть статус музыки) =====
+window.HeroPageFlipDebug = window.HeroPageFlipDebug || {};
+window.HeroPageFlipDebug.bgMusic = bgMusic;
+window.HeroPageFlipDebug.bgMusicStarted = () => bgMusicStarted;
+window.HeroPageFlipDebug.musicUrl = cfg.musicUrl;
+
+if (bgMusic) {
+  bgMusic.addEventListener("play",    () => window.HeroPageFlipDebug.musicState = "play");
+  bgMusic.addEventListener("playing", () => window.HeroPageFlipDebug.musicState = "playing");
+  bgMusic.addEventListener("pause",   () => window.HeroPageFlipDebug.musicState = "pause");
+  bgMusic.addEventListener("error",   () => window.HeroPageFlipDebug.musicState = "error");
+  window.HeroPageFlipDebug.musicState = "created";
+}
+
     async function tryStartBgMusic() {
       if (!bgMusic || bgMusicStarted) return;
       try {
@@ -356,3 +370,4 @@
   // экспорт в window
   window.HeroPageFlip = { init };
 })();
+
