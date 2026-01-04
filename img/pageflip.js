@@ -2,9 +2,9 @@
  * HeroPageFlip — минимальная библиотека перелистывания страниц
  * Требует: ES6, работает без зависимостей.
  *
- * Добавлено:
- *  - musicUrl, musicVolume: фоновая музыка в loop
- *  - старт музыки внутри flipToNext() (надежно для смартфонов)
+ * Музыка:
+ *  - стартует ПОСЛЕ ПЕРВОГО ПЕРЕЛИСТЫВАНИЯ
+ *  - loop
  */
 (() => {
   "use strict";
@@ -82,9 +82,6 @@
   }
 
   function buildStyles(flipMs, flipAngleDeg, spine) {
-    // направление:
-    // spine left  => origin left, rotateY negative (уходит влево)
-    // spine right => origin right, rotateY positive (уходит вправо)
     const origin = spine === "right" ? "100% 50%" : "0% 50%";
     const sign = spine === "right" ? 1 : -1;
 
@@ -161,12 +158,11 @@
     return style;
   }
 
-  function createAudio(soundUrl) {
-    if (!soundUrl) return null;
-    const a = new Audio(soundUrl);
+  function createAudio(url) {
+    if (!url) return null;
+    const a = new Audio(url);
     a.preload = "auto";
-    // для iOS полезно:
-    a.playsInline = true;
+    a.playsInline = true; // iOS
     return a;
   }
 
@@ -190,10 +186,8 @@
     const mount = cfg.mount;
     const errorEl = cfg.errorEl || null;
 
-    // очистим mount
     mount.innerHTML = "";
 
-    // контейнер
     const viewport = el("div", "hpf-viewport");
     const stage = el("div", "hpf-stage");
 
@@ -208,76 +202,60 @@
     viewport.appendChild(stage);
     mount.appendChild(viewport);
 
-    // стили анимации
     const flipMs = clampNumber(cfg.flipMs, 650);
     const flipAngleDeg = clampNumber(cfg.flipAngleDeg, 78);
     const spine = (cfg.spine === "right") ? "right" : "left";
 
-    const styleTag = buildStyles(flipMs, flipAngleDeg, spine);
-    mount.appendChild(styleTag);
+    mount.appendChild(buildStyles(flipMs, flipAngleDeg, spine));
 
     // ===== page flip sound =====
-    const audio = createAudio(cfg.soundUrl);
-    let soundUnlocked = false;
+    const flipSound = createAudio(cfg.soundUrl);
+    let flipSoundUnlocked = false;
 
-    function unlockSoundOnce() {
-      if (!audio) return;
-      soundUnlocked = true;
-      audio.play().then(() => {
-        audio.pause();
-        audio.currentTime = 0;
+    function unlockFlipSoundOnce() {
+      if (!flipSound) return;
+      flipSoundUnlocked = true;
+      flipSound.play().then(() => {
+        flipSound.pause();
+        flipSound.currentTime = 0;
       }).catch(() => {});
-      document.removeEventListener("pointerdown", unlockSoundOnce);
+      document.removeEventListener("pointerdown", unlockFlipSoundOnce);
     }
-    document.addEventListener("pointerdown", unlockSoundOnce, { once: true });
+    document.addEventListener("pointerdown", unlockFlipSoundOnce, { once: true });
 
-    function playSound() {
-      if (!audio || !soundUnlocked) return;
+    function playFlipSound() {
+      if (!flipSound || !flipSoundUnlocked) return;
       try {
-        audio.currentTime = 0;
-        audio.play().catch(() => {});
+        flipSound.currentTime = 0;
+        flipSound.play().catch(() => {});
       } catch (_) {}
     }
 
-    // ===== background music =====
-    let bgMusic = null;
-    let bgMusicStarted = false;
+    // ===== background music (START AFTER FIRST FLIP) =====
+    const bgMusic = cfg.musicUrl ? createAudio(cfg.musicUrl) : null;
+    let bgStarted = false;
 
-    if (cfg.musicUrl) {
-      bgMusic = new Audio(cfg.musicUrl);
+    if (bgMusic) {
       bgMusic.loop = true;
       bgMusic.volume = clampNumber(cfg.musicVolume, 0.6);
-      bgMusic.preload = "auto";
-      bgMusic.playsInline = true;
       try { bgMusic.load(); } catch(_) {}
     }
 
-    // ===== DEBUG HOOK (чтобы index мог видеть статус музыки) =====
-window.HeroPageFlipDebug = window.HeroPageFlipDebug || {};
-window.HeroPageFlipDebug.bgMusic = bgMusic;
-window.HeroPageFlipDebug.bgMusicStarted = () => bgMusicStarted;
-window.HeroPageFlipDebug.musicUrl = cfg.musicUrl;
-
-if (bgMusic) {
-  bgMusic.addEventListener("play",    () => window.HeroPageFlipDebug.musicState = "play");
-  bgMusic.addEventListener("playing", () => window.HeroPageFlipDebug.musicState = "playing");
-  bgMusic.addEventListener("pause",   () => window.HeroPageFlipDebug.musicState = "pause");
-  bgMusic.addEventListener("error",   () => window.HeroPageFlipDebug.musicState = "error");
-  window.HeroPageFlipDebug.musicState = "created";
-}
-
-    async function tryStartBgMusic() {
-      if (!bgMusic || bgMusicStarted) return;
+    function startBgMusicFromGesture() {
+      if (!bgMusic || bgStarted) return;
+      // ВАЖНО: без await, прямо в gesture
       try {
         const p = bgMusic.play();
-        if (p && typeof p.then === "function") await p;
-        bgMusicStarted = true;
-      } catch (_) {
-        // если браузер отказал — попробуем на следующем перелистывании
-      }
+        // если промис есть — ставим флаг после успешного старта
+        if (p && typeof p.then === "function") {
+          p.then(() => { bgStarted = true; }).catch(() => {});
+        } else {
+          bgStarted = true;
+        }
+      } catch (_) {}
     }
 
-    // загрузка базы
+    // ===== data =====
     let pages = [];
     let idx = 0;
     let isFlipping = false;
@@ -325,10 +303,10 @@ if (bgMusic) {
 
       await waitImageReady(imgNext, Math.min(450, flipMs));
 
-      // ВАЖНО: стартуем музыку прямо в момент перелистывания (user gesture)
-      await tryStartBgMusic();
+      // Музыка запускается СТРОГО после первого перелистывания (внутри gesture)
+      startBgMusicFromGesture();
 
-      playSound();
+      playFlipSound();
       stage.classList.add("hpf-flipping");
 
       setTimeout(() => {
@@ -348,7 +326,15 @@ if (bgMusic) {
       }, flipMs + 30);
     }
 
-    // события
+    // ===== events =====
+    // На мобилках click иногда срабатывает поздно/странно, pointerup надежнее.
+    viewport.addEventListener("pointerup", (e) => {
+      // не даем браузеру интерпретировать жест как скролл/зум
+      e.preventDefault();
+      flipToNext();
+    }, { passive: false });
+
+    // запасной вариант для старых браузеров
     viewport.addEventListener("click", flipToNext);
 
     // блок double-tap zoom (iOS Safari)
@@ -367,7 +353,5 @@ if (bgMusic) {
     renderInitial();
   }
 
-  // экспорт в window
   window.HeroPageFlip = { init };
 })();
-
