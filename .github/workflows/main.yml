@@ -26,21 +26,14 @@ jobs:
       - name: Debug - List files
         run: ls -la
 
-- name: Validate ZIP
-  run: |
-    if [ ! -f Img.zip ]; then
-      echo "ERROR: Img.zip not found in repository root!"
-      ls -la
-      exit 1
-    fi
-
-    if ! file Img.zip | grep -q "Zip archive"; then
-      echo "ERROR: Img.zip exists but is not a valid ZIP file!"
-      file Img.zip
-      exit 1
-    fi
-
-    echo "ZIP file is valid"
+      - name: Validate ZIP
+        run: |
+          if ! file Img.zip | grep -q "Zip archive"; then
+            echo "ERROR: Img.zip is not a valid ZIP file!"
+            file Img.zip
+            exit 1
+          fi
+          echo "ZIP file is valid"
 
       - name: Unzip img
         run: |
