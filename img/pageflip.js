@@ -243,10 +243,8 @@
 
     function startBgMusicFromGesture() {
       if (!bgMusic || bgStarted) return;
-      // ВАЖНО: без await, прямо в gesture
       try {
-        const p = bgMusic.play();
-        // если промис есть — ставим флаг после успешного старта
+        const p = bgMusic.play(); // важно: синхронно внутри gesture
         if (p && typeof p.then === "function") {
           p.then(() => { bgStarted = true; }).catch(() => {});
         } else {
@@ -303,7 +301,7 @@
 
       await waitImageReady(imgNext, Math.min(450, flipMs));
 
-      // Музыка запускается СТРОГО после первого перелистывания (внутри gesture)
+      // музыка стартует строго после первого перелистывания
       startBgMusicFromGesture();
 
       playFlipSound();
@@ -327,14 +325,13 @@
     }
 
     // ===== events =====
-    // На мобилках click иногда срабатывает поздно/странно, pointerup надежнее.
+    // На мобилках pointerup надежнее click
     viewport.addEventListener("pointerup", (e) => {
-      // не даем браузеру интерпретировать жест как скролл/зум
       e.preventDefault();
       flipToNext();
     }, { passive: false });
 
-    // запасной вариант для старых браузеров
+    // запасной вариант
     viewport.addEventListener("click", flipToNext);
 
     // блок double-tap zoom (iOS Safari)
