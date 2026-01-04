@@ -1,0 +1,60 @@
+name: Unzip img
+
+on:
+  push:
+    paths:
+      - 'Img.zip'
+  workflow_dispatch:   # кнопка "Run workflow"
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  unzip:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout with LFS
+        uses: actions/checkout@v4
+        with:
+          lfs: true
+
+      - name: Install unzip
+        run: sudo apt-get update && sudo apt-get install -y unzip
+
+      - name: Debug - List files
+        run: ls -la
+
+- name: Validate ZIP
+  run: |
+    if [ ! -f Img.zip ]; then
+      echo "ERROR: Img.zip not found in repository root!"
+      ls -la
+      exit 1
+    fi
+
+    if ! file Img.zip | grep -q "Zip archive"; then
+      echo "ERROR: Img.zip exists but is not a valid ZIP file!"
+      file Img.zip
+      exit 1
+    fi
+
+    echo "ZIP file is valid"
+
+      - name: Unzip img
+        run: |
+          mkdir -p img
+          unzip -o Img.zip -d img/
+          echo "Unzipped $(find img -type f | wc -l) files into 'img/'"
+
+      - name: Remove ZIP
+        run: rm -f Img.zip
+
+      - name: Commit & Push
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "actions@github.com"
+          git add img/
+          git commit -m "Unpacked Img.zip into img/" || echo "No changes to commit"
+          git push origin HEAD:main || echo "Push failed or no changes"
