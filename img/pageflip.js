@@ -5,6 +5,7 @@
  * Музыка:
  *  - стартует при ПЕРВОМ перелистывании (внутри pointerdown)
  *  - loop
+ *  - если не стартует/не грузится — пишет причину в errorEl
  */
 (() => {
   "use strict";
@@ -22,7 +23,6 @@
 
     flipMs: 650,
     flipAngleDeg: 78,
-
     spine: "left",
   };
 
@@ -144,12 +144,25 @@
     return style;
   }
 
-  function createAudio(url) {
+  function createAudioSimple(url) {
     if (!url) return null;
-    // Создаём именно Audio, но play будем вызывать строго из обработчика жеста
     const a = new Audio(url);
     a.preload = "auto";
-    a.playsInline = true; // iOS
+    a.playsInline = true;
+    return a;
+  }
+
+  function createAudioDom(url) {
+    if (!url) return null;
+    const a = document.createElement("audio");
+    a.src = url;
+    a.preload = "auto";
+    a.playsInline = true;     // iOS
+    a.setAttribute("playsinline", "");
+    a.setAttribute("webkit-playsinline", "");
+    a.crossOrigin = "anonymous"; // не мешает, иногда помогает
+    a.style.display = "none";
+    document.body.appendChild(a);
     return a;
   }
 
@@ -194,14 +207,13 @@
     const spine = (cfg.spine === "right") ? "right" : "left";
     mount.appendChild(buildStyles(flipMs, flipAngleDeg, spine));
 
-    // ---- flip sound
-    const flipSound = createAudio(cfg.soundUrl);
+    // ---- page flip sound
+    const flipSound = createAudioSimple(cfg.soundUrl);
     let flipSoundUnlocked = false;
 
     function unlockFlipSoundFromGesture() {
       if (!flipSound || flipSoundUnlocked) return;
       flipSoundUnlocked = true;
-      // короткий "пинг" для unlock (может быть заблокирован — ок)
       try {
         const p = flipSound.play();
         if (p && p.then) p.then(() => {
@@ -219,26 +231,63 @@
       } catch (_) {}
     }
 
-    // ---- background music (start on FIRST FLIP in the gesture handler)
-    const bgMusic = cfg.musicUrl ? createAudio(cfg.musicUrl) : null;
+    // ---- background music (DOM audio)
+    const bgMusic = cfg.musicUrl ? createAudioDom(cfg.musicUrl) : null;
     let bgStarted = false;
 
     if (bgMusic) {
       bgMusic.loop = true;
       bgMusic.volume = clampNumber(cfg.musicVolume, 0.6);
+      bgMusic.muted = false;
       try { bgMusic.load(); } catch(_) {}
+
+      bgMusic.addEventListener("error", () => {
+        // network/format error
+        showError(errorEl, "Не удалось загрузить музыку:\n" + cfg.musicUrl);
+      });
     }
 
     function startBgMusicFromGesture() {
       if (!bgMusic || bgStarted) return;
+
+      bgMusic.loop = true;
+      bgMusic.muted = false;
+      bgMusic.volume = clampNumber(cfg.musicVolume, 0.6);
+
       try {
         const p = bgMusic.play();
         if (p && p.then) {
-          p.then(() => { bgStarted = true; }).catch(() => {});
+          p.then(() => {
+            bgStarted = true;
+            // не показываем ничего, просто стартуем
+          }).catch((err) => {
+            showError(errorEl,
+              "Музыка заблокирована браузером.\n" +
+              "Попробуй: выключить беззвучный режим (iPhone), поднять Media Volume.\n" +
+              "Ошибка: " + (err && err.name ? err.name : "play() rejected")
+            );
+          });
         } else {
           bgStarted = true;
         }
-      } catch(_) {}
+
+        // Если через 400мс всё ещё paused — сообщим (бывает без reject)
+        setTimeout(() => {
+          if (!bgStarted && bgMusic && bgMusic.paused) {
+            showError(errorEl,
+              "Музыка не запустилась (paused).\n" +
+              "Проверь громкость/беззвучный режим.\n" +
+              "URL: " + cfg.musicUrl
+            );
+          }
+        }, 400);
+
+      } catch (err) {
+        showError(errorEl,
+          "Ошибка запуска музыки.\n" +
+          (err && err.message ? err.message : String(err))
+        );
+      }
     }
 
     // ---- data
@@ -305,24 +354,21 @@
         if (afterStr) preload(pageToUrl(cfg.imgBaseUrl, afterStr));
 
         isFlipping = false;
-        hideError(errorEl);
       }, flipMs + 30);
     }
 
     // ---- events
-    // КРИТИЧНО: play() для музыки вызываем ПРЯМО ТУТ, в синхронном обработчике жеста
     viewport.addEventListener("pointerdown", (e) => {
       e.preventDefault();
 
-      // unlock + start bg music на первом перелистывании
+      // всё аудио — строго тут, синхронно в gesture
       unlockFlipSoundFromGesture();
       startBgMusicFromGesture();
 
-      // сам flip (async) отдельно
+      // flip уже можно async
       flipToNextAsync();
     }, { passive: false });
 
-    // запасной вариант для старых браузеров
     viewport.addEventListener("click", () => flipToNextAsync());
 
     // блок double-tap zoom (iOS Safari)
