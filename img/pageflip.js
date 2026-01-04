@@ -1,9 +1,9 @@
 /* pageflip.js
  * HeroPageFlip — минимальная библиотека перелистывания страниц
- * Требует: ES6, работает без зависимостей.
+ * ES6, без зависимостей.
  *
  * Музыка:
- *  - стартует ПОСЛЕ ПЕРВОГО ПЕРЕЛИСТЫВАНИЯ
+ *  - стартует при ПЕРВОМ перелистывании (внутри pointerdown)
  *  - loop
  */
 (() => {
@@ -17,15 +17,12 @@
     imgBaseUrl: "",
     soundUrl: "",
 
-    // background music
     musicUrl: "",
     musicVolume: 0.6,
 
     flipMs: 650,
     flipAngleDeg: 78,
 
-    // 'left' => корешок слева (страница перелистывается справа->налево)
-    // 'right' => корешок справа (страница перелистывается слева->направо)
     spine: "left",
   };
 
@@ -88,26 +85,16 @@
     const style = el("style");
     style.textContent = `
       .hpf-viewport{
-        position: absolute;
-        inset: 0;
-        width: 100%;
-        height: 100%;
-        background: transparent;
-        display:flex;
-        align-items:center;
-        justify-content:center;
-        overflow:hidden;
-        touch-action:none;
-        cursor:pointer;
+        position:absolute; inset:0;
+        width:100%; height:100%;
+        display:flex; align-items:center; justify-content:center;
+        overflow:hidden; touch-action:none; cursor:pointer;
       }
       .hpf-stage{
-        position: relative;
-        width: 100%;
-        height: 100%;
-        display:flex;
-        align-items:center;
-        justify-content:center;
-        perspective: 1200px;
+        position:relative;
+        width:100%; height:100%;
+        display:flex; align-items:center; justify-content:center;
+        perspective:1200px;
         overflow:hidden;
         touch-action:none;
       }
@@ -120,39 +107,38 @@
         max-width:100%;
         object-fit:contain;
         display:block;
-        transform: translateX(-50%);
+        transform:translateX(-50%);
         user-select:none;
         -webkit-user-drag:none;
         touch-action:none;
         backface-visibility:hidden;
         transform-style:preserve-3d;
       }
-      .hpf-current{ z-index: 2; }
+      .hpf-current{ z-index:2; }
       .hpf-next{
-        z-index: 1;
-        opacity: 0;
-        transform: translateX(-50%) scale(0.998);
+        z-index:1;
+        opacity:0;
+        transform:translateX(-50%) scale(0.998);
       }
 
       .hpf-flipping .hpf-current{
-        transform-origin: ${origin};
-        animation: hpfFlipOut ${flipMs}ms ease-in-out forwards;
-        filter: drop-shadow(${spine === "right" ? "-18px" : "18px"} 0 22px rgba(0,0,0,.28));
+        transform-origin:${origin};
+        animation:hpfFlipOut ${flipMs}ms ease-in-out forwards;
+        filter:drop-shadow(${spine === "right" ? "-18px" : "18px"} 0 22px rgba(0,0,0,.28));
       }
       .hpf-flipping .hpf-next{
-        animation: hpfNextIn ${flipMs}ms ease-out forwards;
+        animation:hpfNextIn ${flipMs}ms ease-out forwards;
       }
 
       @keyframes hpfFlipOut{
-        0%   { transform: translateX(-50%) rotateY(0deg); opacity: 1; }
-        45%  { opacity: 0.75; }
-        100% { transform: translateX(-50%) rotateY(${sign * flipAngleDeg}deg); opacity: 0; }
+        0%{ transform:translateX(-50%) rotateY(0deg); opacity:1; }
+        45%{ opacity:0.75; }
+        100%{ transform:translateX(-50%) rotateY(${sign * flipAngleDeg}deg); opacity:0; }
       }
-
       @keyframes hpfNextIn{
-        0%   { opacity: 0; transform: translateX(-50%) scale(0.998); }
-        55%  { opacity: 0.55; }
-        100% { opacity: 1; transform: translateX(-50%) scale(1); }
+        0%{ opacity:0; transform:translateX(-50%) scale(0.998); }
+        55%{ opacity:0.55; }
+        100%{ opacity:1; transform:translateX(-50%) scale(1); }
       }
     `;
     return style;
@@ -160,6 +146,7 @@
 
   function createAudio(url) {
     if (!url) return null;
+    // Создаём именно Audio, но play будем вызывать строго из обработчика жеста
     const a = new Audio(url);
     a.preload = "auto";
     a.playsInline = true; // iOS
@@ -205,23 +192,24 @@
     const flipMs = clampNumber(cfg.flipMs, 650);
     const flipAngleDeg = clampNumber(cfg.flipAngleDeg, 78);
     const spine = (cfg.spine === "right") ? "right" : "left";
-
     mount.appendChild(buildStyles(flipMs, flipAngleDeg, spine));
 
-    // ===== page flip sound =====
+    // ---- flip sound
     const flipSound = createAudio(cfg.soundUrl);
     let flipSoundUnlocked = false;
 
-    function unlockFlipSoundOnce() {
-      if (!flipSound) return;
+    function unlockFlipSoundFromGesture() {
+      if (!flipSound || flipSoundUnlocked) return;
       flipSoundUnlocked = true;
-      flipSound.play().then(() => {
-        flipSound.pause();
-        flipSound.currentTime = 0;
-      }).catch(() => {});
-      document.removeEventListener("pointerdown", unlockFlipSoundOnce);
+      // короткий "пинг" для unlock (может быть заблокирован — ок)
+      try {
+        const p = flipSound.play();
+        if (p && p.then) p.then(() => {
+          flipSound.pause();
+          flipSound.currentTime = 0;
+        }).catch(() => {});
+      } catch(_) {}
     }
-    document.addEventListener("pointerdown", unlockFlipSoundOnce, { once: true });
 
     function playFlipSound() {
       if (!flipSound || !flipSoundUnlocked) return;
@@ -231,7 +219,7 @@
       } catch (_) {}
     }
 
-    // ===== background music (START AFTER FIRST FLIP) =====
+    // ---- background music (start on FIRST FLIP in the gesture handler)
     const bgMusic = cfg.musicUrl ? createAudio(cfg.musicUrl) : null;
     let bgStarted = false;
 
@@ -244,16 +232,16 @@
     function startBgMusicFromGesture() {
       if (!bgMusic || bgStarted) return;
       try {
-        const p = bgMusic.play(); // важно: синхронно внутри gesture
-        if (p && typeof p.then === "function") {
+        const p = bgMusic.play();
+        if (p && p.then) {
           p.then(() => { bgStarted = true; }).catch(() => {});
         } else {
           bgStarted = true;
         }
-      } catch (_) {}
+      } catch(_) {}
     }
 
-    // ===== data =====
+    // ---- data
     let pages = [];
     let idx = 0;
     let isFlipping = false;
@@ -283,7 +271,7 @@
       if (nextStr) preload(pageToUrl(cfg.imgBaseUrl, nextStr));
     }
 
-    async function flipToNext() {
+    async function flipToNextAsync() {
       if (isFlipping || !pages.length) return;
       isFlipping = true;
 
@@ -300,9 +288,6 @@
       imgNext.style.opacity = "0";
 
       await waitImageReady(imgNext, Math.min(450, flipMs));
-
-      // музыка стартует строго после первого перелистывания
-      startBgMusicFromGesture();
 
       playFlipSound();
       stage.classList.add("hpf-flipping");
@@ -324,15 +309,21 @@
       }, flipMs + 30);
     }
 
-    // ===== events =====
-    // На мобилках pointerup надежнее click
-    viewport.addEventListener("pointerup", (e) => {
+    // ---- events
+    // КРИТИЧНО: play() для музыки вызываем ПРЯМО ТУТ, в синхронном обработчике жеста
+    viewport.addEventListener("pointerdown", (e) => {
       e.preventDefault();
-      flipToNext();
+
+      // unlock + start bg music на первом перелистывании
+      unlockFlipSoundFromGesture();
+      startBgMusicFromGesture();
+
+      // сам flip (async) отдельно
+      flipToNextAsync();
     }, { passive: false });
 
-    // запасной вариант
-    viewport.addEventListener("click", flipToNext);
+    // запасной вариант для старых браузеров
+    viewport.addEventListener("click", () => flipToNextAsync());
 
     // блок double-tap zoom (iOS Safari)
     let lastTap = 0;
