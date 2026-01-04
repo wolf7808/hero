@@ -1,6 +1,10 @@
 /* pageflip.js
  * HeroPageFlip — минимальная библиотека перелистывания страниц
  * Требует: ES6, работает без зависимостей.
+ *
+ * Добавлено:
+ *  - musicUrl, musicVolume: фоновая музыка в loop
+ *  - старт музыки внутри flipToNext() (надежно для смартфонов)
  */
 (() => {
   "use strict";
@@ -12,6 +16,10 @@
     dbUrl: "",
     imgBaseUrl: "",
     soundUrl: "",
+
+    // background music
+    musicUrl: "",
+    musicVolume: 0.6,
 
     flipMs: 650,
     flipAngleDeg: 78,
@@ -157,6 +165,8 @@
     if (!soundUrl) return null;
     const a = new Audio(soundUrl);
     a.preload = "auto";
+    // для iOS полезно:
+    a.playsInline = true;
     return a;
   }
 
@@ -206,7 +216,7 @@
     const styleTag = buildStyles(flipMs, flipAngleDeg, spine);
     mount.appendChild(styleTag);
 
-    // звук
+    // ===== page flip sound =====
     const audio = createAudio(cfg.soundUrl);
     let soundUnlocked = false;
 
@@ -227,6 +237,30 @@
         audio.currentTime = 0;
         audio.play().catch(() => {});
       } catch (_) {}
+    }
+
+    // ===== background music =====
+    let bgMusic = null;
+    let bgMusicStarted = false;
+
+    if (cfg.musicUrl) {
+      bgMusic = new Audio(cfg.musicUrl);
+      bgMusic.loop = true;
+      bgMusic.volume = clampNumber(cfg.musicVolume, 0.6);
+      bgMusic.preload = "auto";
+      bgMusic.playsInline = true;
+      try { bgMusic.load(); } catch(_) {}
+    }
+
+    async function tryStartBgMusic() {
+      if (!bgMusic || bgMusicStarted) return;
+      try {
+        const p = bgMusic.play();
+        if (p && typeof p.then === "function") await p;
+        bgMusicStarted = true;
+      } catch (_) {
+        // если браузер отказал — попробуем на следующем перелистывании
+      }
     }
 
     // загрузка базы
@@ -276,6 +310,9 @@
       imgNext.style.opacity = "0";
 
       await waitImageReady(imgNext, Math.min(450, flipMs));
+
+      // ВАЖНО: стартуем музыку прямо в момент перелистывания (user gesture)
+      await tryStartBgMusic();
 
       playSound();
       stage.classList.add("hpf-flipping");
