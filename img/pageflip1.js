@@ -100,17 +100,17 @@
         touch-action:none;
         cursor:pointer;
       }
-      .hpf-stage{
-        position: relative;
-        width: 100%;
-        height: 100%;
-        display:flex;
-        align-items:center;
-        justify-content:center;
-        perspective: 1200px;
-        overflow:hidden;
-        touch-action:none;
-      }
+.hpf-stage{
+  position: relative;
+  width: 100%;
+  height: 100%;
+  display:flex;
+  align-items:flex-start;
+  justify-content:center;
+  perspective: 1200px;
+  overflow:hidden;
+  touch-action:none;
+}
       .hpf-img{
         position:absolute;
         top:0;
@@ -352,3 +352,4 @@
 
   window.HeroPageFlip = { init };
 })();
+
