@@ -1,0 +1,10 @@
+[
+{"spell_good":"Добро","type":"spell"},
+{"spell_faith":"Вера","type":"spell"},
+{"spell_mercy":"Милосердие","type":"spell"},
+{"spell_strength":"Сила","type":"spell"},
+{"spell_fear":"Страх","type":"spell"},
+{"spell_power":"Власть","type":"spell"},
+{"Item_apple":"Яблоко","type":"food","option":"100"},
+{"Item_sword":"Меч","type":"equip","option":"1"}
+]
