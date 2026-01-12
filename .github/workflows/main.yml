@@ -1,9 +1,9 @@
-name: Unzip assets
+name: Unzip src
 
 on:
   push:
     paths:
-      - 'assets.zip'
+      - 'src.zip'
   workflow_dispatch:
 
 permissions:
@@ -26,22 +26,22 @@ jobs:
       - name: Debug - List files before unzip
         run: ls -la
 
-      - name: Validate assets.zip
+      - name: Validate src.zip
         run: |
-          if ! file assets.zip | grep -q "Zip archive"; then
-            echo "ERROR: assets.zip is not a valid ZIP file!"
-            file assets.zip
+          if ! file src.zip | grep -q "Zip archive"; then
+            echo "ERROR: src.zip is not a valid ZIP file!"
+            file src.zip
             exit 1
           fi
           echo "ZIP file is valid"
 
-      - name: Unzip assets.zip into repository root
+      - name: Unzip src.zip into repository root
         run: |
-          unzip -o assets.zip
+          unzip -o src.zip
           echo "Unzipped $(find . -type f | wc -l) total files after extraction"
 
-      - name: Remove assets.zip
-        run: rm -f assets.zip
+      - name: Remove src.zip
+        run: rm -f src.zip
 
       - name: Debug - List files after unzip
         run: ls -la
@@ -52,5 +52,5 @@ jobs:
           git config user.email "actions@github.com"
 
           git add .
-          git commit -m "Unpacked assets.zip into repository root" || echo "No changes to commit"
+          git commit -m "Unpacked src.zip into repository root" || echo "No changes to commit"
           git push origin HEAD:main || echo "Nothing to push"
