@@ -56,21 +56,6 @@ body{
   -webkit-tap-highlight-color: transparent;
 }
 
-@media (min-width: 1024px) and (min-height: 1536px){
-  html, body{
-    min-width: var(--page-w);
-    min-height: var(--page-h);
-  }
-  #app,
-  .hpf-viewport,
-  .hpf-stage{
-    min-width: var(--page-w);
-    min-height: var(--page-h);
-  }
-  :is(#textfield, #statsfield, #battlefield, #helpfield){
-    min-width: var(--page-w);
-  }
-}
 
 /* ===== Layout ===== */
 #app{

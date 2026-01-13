@@ -752,19 +752,10 @@ if (typ === "equip" && (opt === 1 || opt === 2 || opt === 3)){
     return r;
   }
 
-  function pageMin(){
-    const cs = getComputedStyle(document.documentElement);
-    const w = parseFloat(cs.getPropertyValue("--page-w")) || 1024;
-    const h = parseFloat(cs.getPropertyValue("--page-h")) || 1536;
-    return { w, h };
-  }
-
   function clampWidthToMin(r){
-    const min = pageMin();
-    const w0 = Math.round(r.width);
-    const w = Math.max(min.w, w0);
-    const left = Math.round(r.left + (r.width - w) / 2);
-    return { width: w, left };
+    const width = Math.round(r.width);
+    const left = Math.round(r.left);
+    return { width, left };
   }
 
   function ensureBattleUI(){
