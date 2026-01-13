@@ -285,7 +285,7 @@ body{
   flex: 0 0 auto;
   width: 92%;
   margin: auto auto 0 auto;
-  font-size: clamp(9px, 1vw, 11px);
+  font-size: clamp(8px, 0.9vw, 10px);
   line-height: 1.2;
   overflow: hidden;
   user-select: none;
@@ -383,8 +383,8 @@ body{
   display: flex;
   align-items: center;
   justify-content: center;
-  width: clamp(140px, 22vw, 200px);
-  height: clamp(140px, 22vw, 200px);
+  width: calc(352px * 0.4);
+  height: calc(352px * 0.4);
   flex: 0 0 auto;
 }
 
@@ -401,8 +401,8 @@ body{
 }
 
 
-.bf-title{ font-weight: 700; font-size: clamp(11px, 1vw, 13px); }
-.bf-val{ font-size: clamp(18px, 2.2vw, 24px); font-variant-numeric: tabular-nums; }
+.bf-title{ font-weight: 700; font-size: clamp(10px, 0.9vw, 12px); }
+.bf-val{ font-size: clamp(16px, 1.8vw, 20px); font-variant-numeric: tabular-nums; }
 
 .bf-target{
   display:flex;
@@ -427,11 +427,11 @@ body{
 }
 
 .bf-btn{
-  padding: 6px 10px;
+  padding: 5px 8px;
   border-radius: 10px;
   border: none;
   color: var(--ink);
-  font-size: clamp(11px, 1vw, 13px);
+  font-size: clamp(10px, 0.9vw, 12px);
 }
 
 #err{
