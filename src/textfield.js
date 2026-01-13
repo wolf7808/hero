@@ -78,9 +78,7 @@
 
   function clampWidthToMin(r){
     const min = pageMin();
-    const enforce = window.innerWidth >= min.w && window.innerHeight >= min.h;
     const w0 = Math.round(r.width);
-    if (!enforce) return { width: w0, left: Math.round(r.left) };
     const w = Math.max(min.w, w0);
     const left = Math.round(r.left + (r.width - w) / 2);
     return { width: w, left };
