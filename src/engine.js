@@ -753,9 +753,14 @@ if (typ === "equip" && (opt === 1 || opt === 2 || opt === 3)){
   }
 
   function clampWidthToMin(r){
+    const vv = window.visualViewport;
+    const vw = (vv && vv.width) ? vv.width : window.innerWidth;
     const w0 = Math.round(r.width);
-    const width = w0;
-    const left = Math.round(r.left + (r.width - width) / 2);
+    const width = Math.min(w0, Math.round(vw));
+    let left = Math.round(r.left + (r.width - width) / 2);
+    const maxLeft = Math.max(0, Math.round(vw) - width);
+    if (left < 0) left = 0;
+    if (left > maxLeft) left = maxLeft;
     return { width, left };
   }
 
