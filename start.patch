@@ -1,8 +1,8 @@
 diff --git a/src/start.js b/src/start.js
-index f8e8321c9e388d55ca2260cc3a162adae12901cd..bd8be866b01a4f1ac6f56560936fde0db9a92496 100644
+index f8e8321c9e388d55ca2260cc3a162adae12901cd..8701edc45c9ba3badee52c43f890939d54cca986 100644
 --- a/src/start.js
 +++ b/src/start.js
-@@ -1,42 +1,50 @@
+@@ -1,92 +1,131 @@
  // start.js
  // Minimal start menu: plain centered words (no background).
  // Items are read from Menu.json:
@@ -20,16 +20,37 @@ index f8e8321c9e388d55ca2260cc3a162adae12901cd..bd8be866b01a4f1ac6f56560936fde0d
    function logError(...args){ if (__log) __log.error(...args); else console.error("[START]", ...args); }
  
 -  const MENU_URL = "./assets/Menu.json";
-+  const MENU_URL = (() => {
-+    try{
-+      if (window.HERO_ASSET_BASE) {
-+        const base = String(window.HERO_ASSET_BASE);
-+        return (base.endsWith("/") ? base : base + "/") + "Menu.json";
-+      }
-+    }catch(_){}
-+    return "./assets/Menu.json";
-+  })();
-   const ROOT_ID = "heroStartMenu";
+-  const ROOT_ID = "heroStartMenu";
++  const MENU_BASE_CANDIDATES = [
++    () => {
++      try{
++        if (window.HERO_ASSET_BASE) {
++          const base = String(window.HERO_ASSET_BASE);
++          return base.endsWith("/") ? base : base + "/";
++        }
++      }catch(_){}
++      return null;
++    },
++    () => "./assets/",
++    () => "https://raw.githubusercontent.com/wolf7808/Hero/main/assets/",
++    () => "https://cdn.jsdelivr.net/gh/wolf7808/Hero@main/assets/"
++  ];
++
++  function menuUrls(){
++    const seen = new Set();
++    const urls = [];
++    for (const getBase of MENU_BASE_CANDIDATES){
++      const base = getBase();
++      if (!base) continue;
++      const url = base + "Menu.json";
++      if (seen.has(url)) continue;
++      seen.add(url);
++      urls.push(url);
++    }
++    return urls;
++  }
++
++  const ROOT_ID = "heroStartMenu";
  
    let labels = Object.create(null);
  
@@ -54,3 +75,81 @@ index f8e8321c9e388d55ca2260cc3a162adae12901cd..bd8be866b01a4f1ac6f56560936fde0d
      }
      const k = Object.keys(obj)[0];
      if (!k) {
+       console.warn(context + " entry has no key at index", i);
+       continue;
+     }
+     ok++;
+   }
+   return ok > 0;
+ }
+ 
+-  async function loadMenu(){
+-    try{
+-      const r = await fetch(MENU_URL + "?v=" + Date.now(), { cache: "no-store" });
+-      const arr = r.ok ? await r.json() : null;
+-      if (!Array.isArray(arr) || !arr.length || !validateKeyedArray(arr, "Menu.json")) logWarn("Menu.json: invalid or empty");
+-      if (Array.isArray(arr)){
+-        const m = Object.create(null);
+-        for (const it of arr){
+-          if (!it || typeof it !== "object") continue;
+-          const k = Object.keys(it)[0];
+-          if (!k) continue;
+-          m[String(k)] = String(it[k] ?? k);
+-        }
+-        labels = m;
+-      }
+-    }catch(err){ logWarn("Menu.json fetch failed", err); }
+-  }
++  async function loadMenu(){
++    try{
++      const urls = menuUrls();
++      let lastErr = null;
++      for (const url of urls){
++        try{
++          const r = await fetch(url + "?v=" + Date.now(), { cache: "no-store" });
++          const arr = r.ok ? await r.json() : null;
++          if (!Array.isArray(arr) || !arr.length || !validateKeyedArray(arr, "Menu.json")) {
++            lastErr = "Menu.json: invalid or empty";
++            continue;
++          }
++          const m = Object.create(null);
++          for (const it of arr){
++            if (!it || typeof it !== "object") continue;
++            const k = Object.keys(it)[0];
++            if (!k) continue;
++            m[String(k)] = String(it[k] ?? k);
++          }
++          labels = m;
++          return;
++        }catch(err){
++          lastErr = err;
++        }
++      }
++      if (lastErr) logWarn("Menu.json fetch failed", lastErr);
++    }catch(err){ logWarn("Menu.json fetch failed", err); }
++  }
+ 
+   function ensureRoot(){
+     let el = document.getElementById(ROOT_ID);
+     if (el) return el;
+ 
+     el = document.createElement("div");
+     el.id = ROOT_ID;
+     el.style.position = "fixed";
+     el.style.left = "50%";
+     el.style.top = "50%";
+     el.style.transform = "translate(-50%, -50%)";
+     el.style.zIndex = "10060"; // below help dropdown (10080), above page
+     el.style.display = "none";
+     el.style.pointerEvents = "auto";
+     el.style.textAlign = "center";
+     el.style.userSelect = "none";
+     document.body.appendChild(el);
+     return el;
+   }
+ 
+   function label(k){
+     return labels[k] || k;
+   }
+ 
+   function checkMenuVisible(reason, expectVisible){
