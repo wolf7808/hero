@@ -23,6 +23,7 @@
   // we queue ONE action and execute it right after the first page-changed.
   let __pageReady = false;
   let __pendingAction = null; // () => void
+  let __menuRendered = false;
 
   function esc(s){
     return String(s ?? "").replace(/[&<>\"']/g, (c) => ({"&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;","'":"&#39;"})[c]);
@@ -95,6 +96,11 @@ function validateKeyedArray(arr, context){
       return;
     }
 
+    if (expectVisible && !__menuRendered){
+      logWarn("Start menu not rendered yet", { reason });
+      return;
+    }
+
     const btns = el.querySelectorAll(".startBtn");
     if (expectVisible && btns.length === 0){
       logError("Start menu buttons missing", { reason });
@@ -144,6 +150,7 @@ function validateKeyedArray(arr, context){
         '</span>' +
       '</div>'
     ).join("");
+    __menuRendered = true;
 
     el.querySelectorAll("[data-start-item]").forEach(node => {
       node.addEventListener("click", (e) => {
