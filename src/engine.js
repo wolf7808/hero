@@ -11,14 +11,22 @@
 
   const STORAGE_KEY = "hero_save_v1";
 
-  const ASSET_BASE = "./assets/";
+  const ASSET_BASE = (() => {
+    try{
+      if (window.HERO_ASSET_BASE) {
+        const base = String(window.HERO_ASSET_BASE);
+        return base.endsWith("/") ? base : base + "/";
+      }
+    }catch(_){ }
+    return "./assets/";
+  })();
   const STATS_META_URL = ASSET_BASE + "Stats.json";
   const ITEMS_URL = ASSET_BASE + "Items.json";
 
   // Magic tab: fixed number of spell slots
   const SPELLBOOK_SLOTS = 6;
 
-  const TALE_BASE = "./assets/Img/"; // folder where 000.webp, blank.webp, tale*.webp live
+  const TALE_BASE = ASSET_BASE + "Img/"; // folder where 000.webp, blank.webp, tale*.webp live
 
   // Cache-bust version for tale frames (and other image assets loaded by engine).
   // Priority:
