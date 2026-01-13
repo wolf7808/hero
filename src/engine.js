@@ -23,6 +23,40 @@
   const STATS_META_URL = ASSET_BASE + "Stats.json";
   const ITEMS_URL = ASSET_BASE + "Items.json";
   const MENU_URL = ASSET_BASE + "Menu.json";
+  let __menuLabels = null;
+  let __menuLabelsPromise = null;
+
+  function ensureMenuLabels(){
+    if (__menuLabelsPromise) return __menuLabelsPromise;
+    __menuLabelsPromise = (async () => {
+      let arr = null;
+      try{
+        const r = await fetch(MENU_URL + "?v=" + Date.now(), { cache:"no-store" });
+        if (r.ok) arr = await r.json();
+      }catch(_){ }
+
+      const map = Object.create(null);
+      if (Array.isArray(arr) && validateKeyedArray(arr, "Menu.json")) {
+        for (const obj of arr){
+          if (!obj || typeof obj !== "object") continue;
+          const k = Object.keys(obj)[0];
+          if (!k) continue;
+          map[String(k)] = String(obj[k] ?? k);
+        }
+      }
+      __menuLabels = map;
+      if (state.battle) renderBattle();
+      return map;
+    })();
+    return __menuLabelsPromise;
+  }
+
+  function menuLabel(key, fallback){
+    const k = String(key || "");
+    if (__menuLabels && k in __menuLabels) return String(__menuLabels[k]);
+    ensureMenuLabels().catch(()=>{});
+    return (fallback != null) ? String(fallback) : k;
+  }
 
   // Magic tab: fixed number of spell slots
   const SPELLBOOK_SLOTS = 6;
@@ -991,8 +1025,8 @@ if (typ === "equip" && (opt === 1 || opt === 2 || opt === 3)){
 
     const actions = `
       <div class="bf-actions">
-        <button class="bf-btn" type="button" data-move="lunge" ${locked ? "disabled" : ""}>?????</button>
-        <button class="bf-btn" type="button" data-move="pirouette" ${locked ? "disabled" : ""}>??????</button>
+        <button class="bf-btn" type="button" data-move="lunge" ${locked ? "disabled" : ""}>${escapeHtml(menuLabel("lunge", "Выпад"))}</button>
+        <button class="bf-btn" type="button" data-move="pirouette" ${locked ? "disabled" : ""}>${escapeHtml(menuLabel("pirouette", "Пируэт"))}</button>
       </div>
     `;
 
