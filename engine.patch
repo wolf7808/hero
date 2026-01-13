@@ -1,8 +1,8 @@
 diff --git a/src/engine.js b/src/engine.js
-index 7ec98aa765fa359f3e305a4405be39ef500b6cdf..0de6f61caf783a0d065d3742fc01a469fe871f29 100644
+index 7ec98aa765fa359f3e305a4405be39ef500b6cdf..63ce90fbf5b377b0ebea79441789094c591132df 100644
 --- a/src/engine.js
 +++ b/src/engine.js
-@@ -1,49 +1,96 @@
+@@ -1,49 +1,99 @@
  // engine.js (rewrite v2)
  // Owns game state, parses and runs actions, including battle.
  // Stats start at 0 and remain 0 until (stats) is executed.
@@ -54,20 +54,23 @@ index 7ec98aa765fa359f3e305a4405be39ef500b6cdf..0de6f61caf783a0d065d3742fc01a469
 +    return null;
 +  }
 +
++  function heroAssetBase(){
++    try{
++      if (!window.HERO_ASSET_BASE) return null;
++      const base = String(window.HERO_ASSET_BASE);
++      const url = new URL(base, window.location.href);
++      if (url.origin.includes("blogspot.com")) return null;
++      return base.endsWith("/") ? base : base + "/";
++    }catch(_){}
++    return null;
++  }
++
 +  const MENU_BASE_CANDIDATES = [
 +    () => assetBaseFromScript("engine.js"),
-+    () => {
-+      try{
-+        if (window.HERO_ASSET_BASE) {
-+          const base = String(window.HERO_ASSET_BASE);
-+          return base.endsWith("/") ? base : base + "/";
-+        }
-+      }catch(_){}
-+      return null;
-+    },
-+    () => ASSET_BASE,
 +    () => "https://raw.githubusercontent.com/wolf7808/hero/main/assets/",
 +    () => "https://cdn.jsdelivr.net/gh/wolf7808/hero@main/assets/",
++    () => heroAssetBase(),
++    () => ASSET_BASE,
 +    () => "https://raw.githubusercontent.com/wolf7808/Hero/main/assets/",
 +    () => "https://cdn.jsdelivr.net/gh/wolf7808/Hero@main/assets/"
 +  ];
@@ -110,7 +113,7 @@ index 7ec98aa765fa359f3e305a4405be39ef500b6cdf..0de6f61caf783a0d065d3742fc01a469
          try{
            const u = new URL(src, window.location.href);
            const v = u.searchParams.get("v");
-@@ -382,53 +429,60 @@
+@@ -382,53 +432,60 @@
  
      // Stats.json is used for BOTH:
      // 1) labels for stat keys (top stats panel)

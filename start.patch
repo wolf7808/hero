@@ -1,8 +1,8 @@
 diff --git a/src/start.js b/src/start.js
-index f8e8321c9e388d55ca2260cc3a162adae12901cd..009d20de11bd081376fc35942dbb09e1bbae34c4 100644
+index f8e8321c9e388d55ca2260cc3a162adae12901cd..84b6d3272fb33da6db3a41653c9d1cdbf9b03160 100644
 --- a/src/start.js
 +++ b/src/start.js
-@@ -1,92 +1,150 @@
+@@ -1,92 +1,153 @@
  // start.js
  // Minimal start menu: plain centered words (no background).
  // Items are read from Menu.json:
@@ -37,20 +37,23 @@ index f8e8321c9e388d55ca2260cc3a162adae12901cd..009d20de11bd081376fc35942dbb09e1
 +    return null;
 +  }
 +
++  function heroAssetBase(){
++    try{
++      if (!window.HERO_ASSET_BASE) return null;
++      const base = String(window.HERO_ASSET_BASE);
++      const url = new URL(base, window.location.href);
++      if (url.origin.includes("blogspot.com")) return null;
++      return base.endsWith("/") ? base : base + "/";
++    }catch(_){}
++    return null;
++  }
++
 +  const MENU_BASE_CANDIDATES = [
 +    () => assetBaseFromScript("start.js"),
-+    () => {
-+      try{
-+        if (window.HERO_ASSET_BASE) {
-+          const base = String(window.HERO_ASSET_BASE);
-+          return base.endsWith("/") ? base : base + "/";
-+        }
-+      }catch(_){}
-+      return null;
-+    },
-+    () => "./assets/",
 +    () => "https://raw.githubusercontent.com/wolf7808/hero/main/assets/",
 +    () => "https://cdn.jsdelivr.net/gh/wolf7808/hero@main/assets/",
++    () => heroAssetBase(),
++    () => "./assets/",
 +    () => "https://raw.githubusercontent.com/wolf7808/Hero/main/assets/",
 +    () => "https://cdn.jsdelivr.net/gh/wolf7808/Hero@main/assets/"
 +  ];
