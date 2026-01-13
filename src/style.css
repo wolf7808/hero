@@ -412,8 +412,8 @@ body{
   text-overflow: ellipsis;
   max-width: 100%;
 }
-.bf-val{ font-size: 12px; font-variant-numeric: tabular-nums; }
-.bf-hplabel{ font-size: 8px; }
+.bf-val{ font-size: 10px; font-variant-numeric: tabular-nums; }
+.bf-hplabel{ font-size: 7px; }
 
 .bf-target{
   display:flex;
