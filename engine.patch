@@ -1,0 +1,66 @@
+diff --git a/src/engine.js b/src/engine.js
+index 7ec98aa765fa359f3e305a4405be39ef500b6cdf..081ad8e96b597b14c6f4c53acaa3fa5bd32eb7e6 100644
+--- a/src/engine.js
++++ b/src/engine.js
+@@ -1,49 +1,50 @@
+ // engine.js (rewrite v2)
+ // Owns game state, parses and runs actions, including battle.
+ // Stats start at 0 and remain 0 until (stats) is executed.
+ (() => {
+   "use strict";
+ 
+   const LOG = "ENGINE";
+   const __log = (window.HeroLog && window.HeroLog.make) ? window.HeroLog.make(LOG) : null;
+   function logInfo(...args){ if (__log) __log.info(...args); else console.log("[" + LOG + "]", ...args); }
+   function logWarn(...args){ if (__log) __log.warn(...args); else console.warn("[" + LOG + "]", ...args); }
+ 
+   const STORAGE_KEY = "hero_save_v1";
+ 
+-  const ASSET_BASE = (() => {
+-    try{
+-      if (window.HERO_ASSET_BASE) {
+-        const base = String(window.HERO_ASSET_BASE);
+-        return base.endsWith("/") ? base : base + "/";
+-      }
+-    }catch(_){ }
+-    return "./assets/";
+-  })();
+-  const STATS_META_URL = ASSET_BASE + "Stats.json";
+-  const ITEMS_URL = ASSET_BASE + "Items.json";
++  const ASSET_BASE = (() => {
++    try{
++      if (window.HERO_ASSET_BASE) {
++        const base = String(window.HERO_ASSET_BASE);
++        return base.endsWith("/") ? base : base + "/";
++      }
++    }catch(_){ }
++    return "./assets/";
++  })();
++  const STATS_META_URL = ASSET_BASE + "Stats.json";
++  const ITEMS_URL = ASSET_BASE + "Items.json";
++  const MENU_URL = ASSET_BASE + "Menu.json";
+ 
+   // Magic tab: fixed number of spell slots
+   const SPELLBOOK_SLOTS = 6;
+ 
+   const TALE_BASE = ASSET_BASE + "Img/"; // folder where 000.webp, blank.webp, tale*.webp live
+ 
+   // Cache-bust version for tale frames (and other image assets loaded by engine).
+   // Priority:
+   // 1) window.HERO_ASSET_VER (optional global set by index)
+   // 2) ?v=... from the engine.js script tag (e.g. engine.js?v=fix30)
+   // 3) Date.now() (stable per page load)
+   const ENGINE_ASSET_VER = (() => {
+     try{
+       if (window.HERO_ASSET_VER != null) return String(window.HERO_ASSET_VER);
+     }catch(_){ }
+ 
+     try{
+       const ss = document.getElementsByTagName("script");
+       for (let i = 0; i < ss.length; i++){
+         const src = ss[i] && ss[i].src ? String(ss[i].src) : "";
+         if (!src) continue;
+         if (!src.includes("engine.js")) continue;
+         try{
+           const u = new URL(src, window.location.href);
+           const v = u.searchParams.get("v");

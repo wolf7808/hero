@@ -1,0 +1,56 @@
+diff --git a/src/start.js b/src/start.js
+index f8e8321c9e388d55ca2260cc3a162adae12901cd..bd8be866b01a4f1ac6f56560936fde0db9a92496 100644
+--- a/src/start.js
++++ b/src/start.js
+@@ -1,42 +1,50 @@
+ // start.js
+ // Minimal start menu: plain centered words (no background).
+ // Items are read from Menu.json:
+ //   {"new":"Новая игра"}, {"save":"Сохранить игру"}, {"load":"Загрузить игру"}, {"options":"Настройки"}
+ // Clicking dispatches actions / events:
+ //   new     -> HeroEngine.newGame(); hero:navigate-next
+ //   save    -> HeroEngine.saveNow()
+ //   load    -> HeroEngine.loadNow(); hero:navigate to saved page
+ //   options -> hero:open-options (textfield opens its Options panel)
+ (() => {
+   "use strict";
+ 
+   const __log = (window.HeroLog && window.HeroLog.make) ? window.HeroLog.make("START") : null;
+   function logWarn(...args){ if (__log) __log.warn(...args); else console.warn("[START]", ...args); }
+   function logError(...args){ if (__log) __log.error(...args); else console.error("[START]", ...args); }
+ 
+-  const MENU_URL = "./assets/Menu.json";
++  const MENU_URL = (() => {
++    try{
++      if (window.HERO_ASSET_BASE) {
++        const base = String(window.HERO_ASSET_BASE);
++        return (base.endsWith("/") ? base : base + "/") + "Menu.json";
++      }
++    }catch(_){}
++    return "./assets/Menu.json";
++  })();
+   const ROOT_ID = "heroStartMenu";
+ 
+   let labels = Object.create(null);
+ 
+   // Page readiness: index dispatches hero:page-changed. If user clicks before it arrives,
+   // we queue ONE action and execute it right after the first page-changed.
+   let __pageReady = false;
+   let __pendingAction = null; // () => void
+   let __menuRendered = false;
+ 
+   function esc(s){
+     return String(s ?? "").replace(/[&<>\"']/g, (c) => ({"&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;","'":"&#39;"})[c]);
+   }
+ 
+ function validateKeyedArray(arr, context){
+   if (!Array.isArray(arr)) return false;
+   let ok = 0;
+   for (let i = 0; i < arr.length; i++) {
+     const obj = arr[i];
+     if (!obj || typeof obj !== "object") {
+       console.warn(context + " entry is not object at index", i);
+       continue;
+     }
+     const k = Object.keys(obj)[0];
+     if (!k) {

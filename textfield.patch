@@ -1,0 +1,65 @@
+diff --git a/src/textfield.js b/src/textfield.js
+index 980d466816a0a89f366ace356b765199c6f055b9..44e21c5896df69a82d3d0bc29b1788ff5320fbae 100644
+--- a/src/textfield.js
++++ b/src/textfield.js
+@@ -546,51 +546,59 @@ if (actionsJson || legacyAction){
+    3) Clicking a dropdown item opens #helpfield (centered overlay):
+         __openHelp(key) does:
+           - refuses if battle is active (__battleActive()).
+           - closes dropdown
+           - hides ONLY UI panels (stats/text/start/errors) via __hideUiPanels(true)
+             while keeping #app visible (background page stays). 
+           - positions #helpfield using battlefield rect when possible, else stage rect.
+         Closing help restores UI panels via __hideUiPanels(false). 
+ 
+    WHY THIS MATTERS FOR CLICK SAFETY:
+      - helpfield/menu sit ABOVE statsfield in z-index and they DO accept clicks.
+        When closed, they MUST be display:none, otherwise they can steal clicks.
+      - __hideUiPanels stores/restores previous display values to avoid messing
+        with showAfter()/hide() timing logic.
+    ============================================================ */
+ 
+ /* ================= HELP MENU (Menu.json) =================
+    - Uses Menu.json (NOT Stats.json)
+    - Click "?" => dropdown (character/magic/options)
+    - Click item => centered help field overlay
+    - Keeps background/page image visible (does NOT hide #app)
+    - Hides only UI panels (statsfield/textfield/start button/errors)
+    - Help field width matches battlefield when available
+ =========================================================== */
+ 
+-const HERO_MENU_URL = "./assets/Menu.json";
++const HERO_MENU_URL = (() => {
++  try{
++    if (window.HERO_ASSET_BASE) {
++      const base = String(window.HERO_ASSET_BASE);
++      return (base.endsWith("/") ? base : base + "/") + "Menu.json";
++    }
++  }catch(_){}
++  return "./assets/Menu.json";
++})();
+ const HERO_MENU_KEYS = ["character","magic","options"];
+ const HERO_MENU_FALLBACK = {};
+ 
+ let __heroMenuLabels = null;   // {key: label}
+ let __heroMenuEl = null;       // dropdown
+ let __heroHelpEl = null;       // overlay
+ let __heroHelpInner = null;
+ let __heroHelpOpen = false;
+ let __heroHelpKey = "";
+ let __menuLoadPromise = null;
+ 
+ function __ensureMenuLabels(){
+   if (!__menuLoadPromise) __menuLoadPromise = __loadMenuJson();
+   return __menuLoadPromise;
+ }
+ 
+ 
+ //
+ // ================= INVENTORY VIEWMODEL (from engine.js) =================
+ // We render the Character panel from a *view model* sent by engine.js via
+ // CustomEvent("hero:inventory-changed").
+ //
+ // Why event-based?
+ //   - Keeps UI decoupled from engine internal state.
+ //   - Prevents accidental breakage if engine state shape changes.
