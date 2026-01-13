@@ -263,6 +263,14 @@ body{
 
 #battlefield{ z-index: 10050; }
 #battlefield.is-visible{ display:block; }
+#battlefield,
+#battlefield__inner,
+.bf-grid,
+.bf-log,
+.bf-title,
+.bf-val{
+  color: var(--ink);
+}
 
 .bf-main{
   flex: 1 1 auto;
@@ -575,6 +583,39 @@ body{
 
 @media (max-width: 720px){
   .helpCharGrid{ grid-template-columns: 1fr; }
+}
+
+@media (max-width: 720px){
+  #statsfield__inner{
+    font-size: 12px;
+    gap: 6px;
+    flex-wrap: wrap;
+    justify-content: center;
+  }
+  #statsfield__inner .stat{
+    flex: 1 1 45%;
+  }
+  .statsHelp{
+    width: 24px;
+    max-height: 26px;
+  }
+
+  #battlefield__inner{
+    inset: 10px 12px;
+  }
+  .bf-grid{
+    grid-template-columns: 1fr;
+    gap: 8px;
+  }
+  .bf-taleWrap{
+    width: calc(352px * 0.4);
+    height: calc(352px * 0.4);
+  }
+  .bf-val{ font-size: 20px; }
+  .bf-log{
+    width: 96%;
+    font-size: 7.5pt;
+  }
 }
 
 @media (max-width: 720px){
