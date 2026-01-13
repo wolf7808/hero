@@ -98,13 +98,18 @@ function validateKeyedArray(arr, context){
 
     if (expectVisible && !__menuRendered){
       logWarn("Start menu not rendered yet", { reason });
-      return;
+      ensureRendered();
     }
 
     const btns = el.querySelectorAll(".startBtn");
     if (expectVisible && btns.length === 0){
-      logError("Start menu buttons missing", { reason });
-      return;
+      logWarn("Start menu buttons missing", { reason });
+      ensureRendered();
+      const btnsAfter = el.querySelectorAll(".startBtn");
+      if (btnsAfter.length === 0){
+        logError("Start menu buttons missing", { reason });
+        return;
+      }
     }
 
     if (!expectVisible) return;
@@ -127,6 +132,11 @@ function validateKeyedArray(arr, context){
     requestAnimationFrame(() => {
       try{ checkMenuVisible(reason, expectVisible); }catch(err){ logWarn("Start menu visibility check failed", err); }
     });
+  }
+
+  function ensureRendered(){
+    if (__menuRendered) return;
+    try{ render(); }catch(err){ logWarn("Start menu render failed", err); }
   }
 
 
@@ -191,6 +201,7 @@ function validateKeyedArray(arr, context){
   // Show only on the first page
   window.addEventListener("hero:page-changed", (e) => {
     __pageReady = true;
+    ensureRendered();
     const isFirst = !!(e && e.detail && e.detail.isFirst);
     setVisible(isFirst);
     scheduleMenuCheck("page-changed", isFirst);
@@ -200,11 +211,19 @@ function validateKeyedArray(arr, context){
     }
   });
 
-  document.addEventListener("DOMContentLoaded", async () => {
+  async function init(){
     await loadMenu();
     render();
     // Until index dispatches hero:page-changed, keep it visible.
     setVisible(true);
-    scheduleMenuCheck("domcontentloaded", true);
-  }, { once:true });
+    scheduleMenuCheck("init", true);
+  }
+
+  if (document.readyState === "loading") {
+    document.addEventListener("DOMContentLoaded", () => {
+      init().catch(err => logWarn("Start menu init failed", err));
+    }, { once:true });
+  } else {
+    init().catch(err => logWarn("Start menu init failed", err));
+  }
 })();
