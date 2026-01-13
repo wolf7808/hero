@@ -1,8 +1,8 @@
 diff --git a/src/textfield.js b/src/textfield.js
-index 980d466816a0a89f366ace356b765199c6f055b9..1bfa896284db59bf37576bd80a61e5cdc0736566 100644
+index 980d466816a0a89f366ace356b765199c6f055b9..bee207b2f4bd6516fbb1a71870aebef9fd99a35b 100644
 --- a/src/textfield.js
 +++ b/src/textfield.js
-@@ -546,116 +546,156 @@ if (actionsJson || legacyAction){
+@@ -546,116 +546,173 @@ if (actionsJson || legacyAction){
     3) Clicking a dropdown item opens #helpfield (centered overlay):
          __openHelp(key) does:
            - refuses if battle is active (__battleActive()).
@@ -29,7 +29,24 @@ index 980d466816a0a89f366ace356b765199c6f055b9..1bfa896284db59bf37576bd80a61e5cd
  =========================================================== */
  
 -const HERO_MENU_URL = "./assets/Menu.json";
++function assetBaseFromScript(fileName){
++  try{
++    const scripts = document.getElementsByTagName("script");
++    for (let i = 0; i < scripts.length; i++){
++      const src = scripts[i] && scripts[i].src ? String(scripts[i].src) : "";
++      if (!src || !src.includes(fileName)) continue;
++      const u = new URL(src, window.location.href);
++      const idx = u.pathname.lastIndexOf("/src/");
++      if (idx >= 0) return u.origin + u.pathname.slice(0, idx + 1) + "assets/";
++      const dir = u.pathname.slice(0, u.pathname.lastIndexOf("/") + 1);
++      return u.origin + dir + "assets/";
++    }
++  }catch(_){}
++  return null;
++}
++
 +const HERO_MENU_BASE_CANDIDATES = [
++  () => assetBaseFromScript("textfield.js"),
 +  () => {
 +    try{
 +      if (window.HERO_ASSET_BASE) {

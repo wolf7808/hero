@@ -1,8 +1,8 @@
 diff --git a/src/start.js b/src/start.js
-index f8e8321c9e388d55ca2260cc3a162adae12901cd..139a0b88f3aa36ccb79cde439492f7db017ca070 100644
+index f8e8321c9e388d55ca2260cc3a162adae12901cd..009d20de11bd081376fc35942dbb09e1bbae34c4 100644
 --- a/src/start.js
 +++ b/src/start.js
-@@ -1,92 +1,133 @@
+@@ -1,92 +1,150 @@
  // start.js
  // Minimal start menu: plain centered words (no background).
  // Items are read from Menu.json:
@@ -21,7 +21,24 @@ index f8e8321c9e388d55ca2260cc3a162adae12901cd..139a0b88f3aa36ccb79cde439492f7db
  
 -  const MENU_URL = "./assets/Menu.json";
 -  const ROOT_ID = "heroStartMenu";
++  function assetBaseFromScript(fileName){
++    try{
++      const scripts = document.getElementsByTagName("script");
++      for (let i = 0; i < scripts.length; i++){
++        const src = scripts[i] && scripts[i].src ? String(scripts[i].src) : "";
++        if (!src || !src.includes(fileName)) continue;
++        const u = new URL(src, window.location.href);
++        const idx = u.pathname.lastIndexOf("/src/");
++        if (idx >= 0) return u.origin + u.pathname.slice(0, idx + 1) + "assets/";
++        const dir = u.pathname.slice(0, u.pathname.lastIndexOf("/") + 1);
++        return u.origin + dir + "assets/";
++      }
++    }catch(_){}
++    return null;
++  }
++
 +  const MENU_BASE_CANDIDATES = [
++    () => assetBaseFromScript("start.js"),
 +    () => {
 +      try{
 +        if (window.HERO_ASSET_BASE) {

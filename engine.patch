@@ -1,8 +1,8 @@
 diff --git a/src/engine.js b/src/engine.js
-index 7ec98aa765fa359f3e305a4405be39ef500b6cdf..926518c79f160f29f12980069a6b5f4fc712dce6 100644
+index 7ec98aa765fa359f3e305a4405be39ef500b6cdf..0de6f61caf783a0d065d3742fc01a469fe871f29 100644
 --- a/src/engine.js
 +++ b/src/engine.js
-@@ -1,49 +1,79 @@
+@@ -1,49 +1,96 @@
  // engine.js (rewrite v2)
  // Owns game state, parses and runs actions, including battle.
  // Stats start at 0 and remain 0 until (stats) is executed.
@@ -38,7 +38,24 @@ index 7ec98aa765fa359f3e305a4405be39ef500b6cdf..926518c79f160f29f12980069a6b5f4f
 +  })();
 +  const STATS_META_URL = ASSET_BASE + "Stats.json";
 +  const ITEMS_URL = ASSET_BASE + "Items.json";
++  function assetBaseFromScript(fileName){
++    try{
++      const scripts = document.getElementsByTagName("script");
++      for (let i = 0; i < scripts.length; i++){
++        const src = scripts[i] && scripts[i].src ? String(scripts[i].src) : "";
++        if (!src || !src.includes(fileName)) continue;
++        const u = new URL(src, window.location.href);
++        const idx = u.pathname.lastIndexOf("/src/");
++        if (idx >= 0) return u.origin + u.pathname.slice(0, idx + 1) + "assets/";
++        const dir = u.pathname.slice(0, u.pathname.lastIndexOf("/") + 1);
++        return u.origin + dir + "assets/";
++      }
++    }catch(_){}
++    return null;
++  }
++
 +  const MENU_BASE_CANDIDATES = [
++    () => assetBaseFromScript("engine.js"),
 +    () => {
 +      try{
 +        if (window.HERO_ASSET_BASE) {
@@ -93,7 +110,7 @@ index 7ec98aa765fa359f3e305a4405be39ef500b6cdf..926518c79f160f29f12980069a6b5f4f
          try{
            const u = new URL(src, window.location.href);
            const v = u.searchParams.get("v");
-@@ -382,53 +412,60 @@
+@@ -382,53 +429,60 @@
  
      // Stats.json is used for BOTH:
      // 1) labels for stat keys (top stats panel)
