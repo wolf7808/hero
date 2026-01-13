@@ -278,7 +278,7 @@ body{
   display: flex;
   flex-direction: column;
   justify-content: flex-start;
-  gap: 6px;
+  gap: 0;
 }
 
 .bf-log{
@@ -292,7 +292,7 @@ body{
 
   height: 86px;
   padding: 6px 8px;
-  border-radius: 10px;
+  border-radius: 0 0 10px 10px;
 
   background: var(--hatch-mid), rgba(0,0,0,0.05);
   box-shadow: inset 0 0 0 2px rgba(0,0,0,0.55), inset 0 0 0 5px rgba(0,0,0,0.18);
@@ -316,19 +316,21 @@ body{
 .bf-grid{
   display: grid;
   width: 100%;
-  grid-template-columns: 36% 28% 36%;
-  gap: 6px;
-  align-items: center;
+  grid-template-columns: 1fr 0.8fr 1fr;
+  gap: 0;
+  align-items: stretch;
   justify-items: center;
   flex: 1 1 auto;
   min-height: 0;
+  border-bottom: 1px solid rgba(0,0,0,0.35);
 }
 
 .bf-playerCol{
   width: 100%;
   display: flex;
-  align-items: center;
+  align-items: flex-start;
   justify-content: center;
+  padding: 10px 8px;
 }
 .bf-centerCol{
   display: flex;
@@ -336,14 +338,17 @@ body{
   align-items: center;
   justify-content: center;
   gap: 6px;
+  padding: 10px 6px;
+  border-left: 1px solid rgba(0,0,0,0.35);
+  border-right: 1px solid rgba(0,0,0,0.35);
 }
 
 .bf-player, .bf-enemies{
   width: 100%;
   display: flex;
   flex-direction: column;
-  align-items: center;
-  justify-content: center;
+  align-items: flex-start;
+  justify-content: flex-start;
   gap: 6px;
   min-width: 0;
   max-width: 100%;
@@ -352,20 +357,20 @@ body{
   align-items: flex-start;
 }
 .bf-enemies{
-  min-width: 120px;
-  align-items: flex-end;
+  align-items: flex-start;
+  padding: 10px 8px;
 }
 
 .bf-enemy{
   width: 100%;
   display: flex;
-  justify-content: flex-end;
+  justify-content: flex-start;
 }
 
 .bf-enemyRow{
   display:flex;
   align-items:center;
-  justify-content:flex-end;
+  justify-content:flex-start;
   gap: 4px;
   max-width: 100%;
 }
@@ -373,7 +378,7 @@ body{
 .bf-enemyBody{
   display:flex;
   flex-direction:column;
-  align-items:flex-end;
+  align-items:flex-start;
   gap: 2px;
   min-width: 0;
   max-width: calc(100% - 14px);
@@ -386,15 +391,16 @@ body{
   max-width: 100%;
 }
 .bf-player .bf-statline{ justify-content: flex-start; }
-.bf-enemies .bf-statline{ justify-content: flex-end; }
+.bf-enemies .bf-statline{ justify-content: flex-start; }
 
 .bf-taleWrap{
   display: flex;
   align-items: center;
   justify-content: center;
-  width: min(220px, 100%);
-  height: min(220px, 100%);
+  width: 160px;
+  height: 160px;
   flex: 0 0 auto;
+  border: 1px solid rgba(0,0,0,0.35);
 }
 
 .bf-tale{
