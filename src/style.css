@@ -314,8 +314,8 @@ body{
 
 .bf-grid{
   display: grid;
-  grid-template-columns: minmax(0, 1fr) clamp(130px, 16vw, 170px) minmax(0, 1fr);
-  gap: 6px;
+  grid-template-columns: minmax(0, 1fr) 120px minmax(0, 1fr);
+  gap: 4px;
   align-items: center;
   justify-items: center;
 }
@@ -383,8 +383,8 @@ body{
   display: flex;
   align-items: center;
   justify-content: center;
-  width: clamp(120px, 16vw, 170px);
-  height: clamp(120px, 16vw, 170px);
+  width: 120px;
+  height: 120px;
   flex: 0 0 auto;
 }
 
@@ -403,13 +403,13 @@ body{
 
 .bf-title{
   font-weight: 700;
-  font-size: clamp(9px, 0.8vw, 11px);
+  font-size: 9px;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
   max-width: 100%;
 }
-.bf-val{ font-size: clamp(14px, 1.6vw, 18px); font-variant-numeric: tabular-nums; }
+.bf-val{ font-size: 14px; font-variant-numeric: tabular-nums; }
 
 .bf-target{
   display:flex;
@@ -420,8 +420,8 @@ body{
 }
 
 .bf-radio{
-  width: 18px;
-  height: 18px;
+  width: 14px;
+  height: 14px;
   accent-color: #4b0f1a;
 }
 
@@ -429,16 +429,16 @@ body{
   display:flex;
   align-items:center;
   justify-content:center;
-  gap: 6px;
+  gap: 4px;
   width: 100%;
 }
 
 .bf-btn{
-  padding: 4px 7px;
+  padding: 4px 6px;
   border-radius: 10px;
   border: none;
   color: var(--ink);
-  font-size: clamp(9px, 0.8vw, 11px);
+  font-size: 9px;
 }
 
 #err{
