@@ -568,7 +568,15 @@ if (actionsJson || legacyAction){
    - Help field width matches battlefield when available
 =========================================================== */
 
-const HERO_MENU_URL = "./assets/Menu.json";
+const HERO_MENU_URL = (() => {
+  try{
+    if (window.HERO_ASSET_BASE) {
+      const base = String(window.HERO_ASSET_BASE);
+      return (base.endsWith("/") ? base : base + "/") + "Menu.json";
+    }
+  }catch(_){ }
+  return "./assets/Menu.json";
+})();
 const HERO_MENU_KEYS = ["character","magic","options"];
 const HERO_MENU_FALLBACK = {};
 

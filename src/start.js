@@ -14,7 +14,15 @@
   function logWarn(...args){ if (__log) __log.warn(...args); else console.warn("[START]", ...args); }
   function logError(...args){ if (__log) __log.error(...args); else console.error("[START]", ...args); }
 
-  const MENU_URL = "./assets/Menu.json";
+  const MENU_URL = (() => {
+    try{
+      if (window.HERO_ASSET_BASE) {
+        const base = String(window.HERO_ASSET_BASE);
+        return (base.endsWith("/") ? base : base + "/") + "Menu.json";
+      }
+    }catch(_){ }
+    return "./assets/Menu.json";
+  })();
   const ROOT_ID = "heroStartMenu";
 
   let labels = Object.create(null);

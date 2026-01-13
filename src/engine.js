@@ -22,6 +22,7 @@
   })();
   const STATS_META_URL = ASSET_BASE + "Stats.json";
   const ITEMS_URL = ASSET_BASE + "Items.json";
+  const MENU_URL = ASSET_BASE + "Menu.json";
 
   // Magic tab: fixed number of spell slots
   const SPELLBOOK_SLOTS = 6;
