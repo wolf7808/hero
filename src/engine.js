@@ -990,19 +990,21 @@ if (typ === "equip" && (opt === 1 || opt === 2 || opt === 3)){
       </div>
     `;
 
-    const grid = `
-      <div class="bf-grid">
-        ${playerCell}
-        ${taleCell}
-        <div class="bf-enemies">${enemiesHtml}</div>
+    const actions = `
+      <div class="bf-actions">
+        <button class="bf-btn" type="button" data-move="lunge" ${locked ? "disabled" : ""}>?????</button>
+        <button class="bf-btn" type="button" data-move="pirouette" ${locked ? "disabled" : ""}>??????</button>
       </div>
     `;
 
-
-        const actions = `
-      <div class="bf-actions">
-        <button class="bf-btn" type="button" data-move="lunge" ${locked ? "disabled" : ""}>Выпад</button>
-        <button class="bf-btn" type="button" data-move="pirouette" ${locked ? "disabled" : ""}>Пируэт</button>
+    const grid = `
+      <div class="bf-grid">
+        <div class="bf-playerCol">${playerCell}</div>
+        <div class="bf-centerCol">
+          ${taleCell}
+          ${actions}
+        </div>
+        <div class="bf-enemies">${enemiesHtml}</div>
       </div>
     `;
 
@@ -1017,7 +1019,7 @@ if (typ === "equip" && (opt === 1 || opt === 2 || opt === 3)){
       </div>
     `;
 
-    inner.innerHTML = `<div class="bf-main">${grid}${actions}</div>${log}`;
+    inner.innerHTML = `<div class="bf-main">${grid}</div>${log}`;
 
     // target radios + click-to-select enemy
     inner.querySelectorAll('input[name="bfTarget"]').forEach(inp=>{
