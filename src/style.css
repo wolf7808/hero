@@ -314,7 +314,7 @@ body{
 
 .bf-grid{
   display: grid;
-  grid-template-columns: minmax(0, 1fr) 120px minmax(0, 1fr);
+  grid-template-columns: minmax(0, 1fr) 112px minmax(0, 1fr);
   gap: 4px;
   align-items: center;
   justify-items: center;
@@ -361,6 +361,7 @@ body{
   align-items:center;
   justify-content:flex-end;
   gap: 6px;
+  max-width: 100%;
 }
 
 .bf-enemyBody{
@@ -369,12 +370,14 @@ body{
   align-items:flex-end;
   gap: 3px;
   min-width: 0;
+  max-width: calc(100% - 16px);
 }
 
 .bf-statline{
   display: flex;
   align-items: center;
   gap: 6px;
+  max-width: 100%;
 }
 .bf-player .bf-statline{ justify-content: flex-start; }
 .bf-enemies .bf-statline{ justify-content: flex-end; }
@@ -383,8 +386,8 @@ body{
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 120px;
-  height: 120px;
+  width: 112px;
+  height: 112px;
   flex: 0 0 auto;
 }
 
@@ -403,13 +406,14 @@ body{
 
 .bf-title{
   font-weight: 700;
-  font-size: 9px;
+  font-size: 8px;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
   max-width: 100%;
 }
-.bf-val{ font-size: 14px; font-variant-numeric: tabular-nums; }
+.bf-val{ font-size: 12px; font-variant-numeric: tabular-nums; }
+.bf-hplabel{ font-size: 8px; }
 
 .bf-target{
   display:flex;
@@ -420,8 +424,8 @@ body{
 }
 
 .bf-radio{
-  width: 14px;
-  height: 14px;
+  width: 12px;
+  height: 12px;
   accent-color: #4b0f1a;
 }
 
@@ -434,11 +438,11 @@ body{
 }
 
 .bf-btn{
-  padding: 4px 6px;
+  padding: 3px 6px;
   border-radius: 10px;
   border: none;
   color: var(--ink);
-  font-size: 9px;
+  font-size: 8px;
 }
 
 #err{
