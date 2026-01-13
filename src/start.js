@@ -12,6 +12,7 @@
 
   const __log = (window.HeroLog && window.HeroLog.make) ? window.HeroLog.make("START") : null;
   function logWarn(...args){ if (__log) __log.warn(...args); else console.warn("[START]", ...args); }
+  function logError(...args){ if (__log) __log.error(...args); else console.error("[START]", ...args); }
 
   const MENU_URL = "./assets/Menu.json";
   const ROOT_ID = "heroStartMenu";
@@ -87,6 +88,41 @@ function validateKeyedArray(arr, context){
     return labels[k] || k;
   }
 
+  function checkMenuVisible(reason, expectVisible){
+    const el = document.getElementById(ROOT_ID);
+    if (!el){
+      if (expectVisible) logError("Start menu root missing", { reason });
+      return;
+    }
+
+    const btns = el.querySelectorAll(".startBtn");
+    if (expectVisible && btns.length === 0){
+      logError("Start menu buttons missing", { reason });
+      return;
+    }
+
+    if (!expectVisible) return;
+
+    const cs = window.getComputedStyle(el);
+    const rect = el.getBoundingClientRect();
+    const hidden = (cs.display === "none") || (cs.visibility === "hidden") || (Number(cs.opacity) === 0) || (rect.width === 0) || (rect.height === 0);
+    if (hidden){
+      logError("Start menu hidden unexpectedly", {
+        reason,
+        display: cs.display,
+        visibility: cs.visibility,
+        opacity: cs.opacity,
+        rect: { w: rect.width, h: rect.height }
+      });
+    }
+  }
+
+  function scheduleMenuCheck(reason, expectVisible){
+    requestAnimationFrame(() => {
+      try{ checkMenuVisible(reason, expectVisible); }catch(err){ logWarn("Start menu visibility check failed", err); }
+    });
+  }
+
 
   function runOrQueue(fn){
     if (__pageReady){ try{ fn(); }catch(_){ } return; }
@@ -150,6 +186,7 @@ function validateKeyedArray(arr, context){
     __pageReady = true;
     const isFirst = !!(e && e.detail && e.detail.isFirst);
     setVisible(isFirst);
+    scheduleMenuCheck("page-changed", isFirst);
     if (__pendingAction){
       const fn = __pendingAction; __pendingAction = null;
       try{ fn(); }catch(_){ }
@@ -161,5 +198,6 @@ function validateKeyedArray(arr, context){
     render();
     // Until index dispatches hero:page-changed, keep it visible.
     setVisible(true);
+    scheduleMenuCheck("domcontentloaded", true);
   }, { once:true });
 })();
