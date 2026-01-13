@@ -776,6 +776,29 @@ body{
   font-size: 18px;
   line-height: 1.2;
 }
+#heroStartMenu.is-loading .startBtn{
+  pointer-events: none;
+  opacity: 0.45;
+  filter: saturate(0.6);
+}
+#heroStartMenu .startProgress{
+  margin: 12px auto 0;
+  width: 220px;
+  text-align: center;
+  user-select: none;
+}
+#heroStartMenu .startProgress__bar{
+  height: 8px;
+  width: 0%;
+  border-radius: 10px;
+  background: var(--hatch-dark);
+  box-shadow: inset 0 0 0 2px rgba(0,0,0,0.55), inset 0 0 0 5px rgba(0,0,0,0.18);
+}
+#heroStartMenu .startProgress__label{
+  margin-top: 6px;
+  font-size: 12px;
+  opacity: 0.8;
+}
 #heroStartMenu .startBtn:hover{
   background: var(--hatch-mid-hover), rgba(0,0,0,0.10);
 }

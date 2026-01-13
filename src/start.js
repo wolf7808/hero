@@ -14,15 +14,22 @@
   function logWarn(...args){ if (__log) __log.warn(...args); else console.warn("[START]", ...args); }
   function logError(...args){ if (__log) __log.error(...args); else console.error("[START]", ...args); }
 
-  const MENU_URL = (() => {
+  const ASSET_BASE = (() => {
     try{
       if (window.HERO_ASSET_BASE) {
         const base = String(window.HERO_ASSET_BASE);
-        return (base.endsWith("/") ? base : base + "/") + "Menu.json";
+        return base.endsWith("/") ? base : base + "/";
       }
     }catch(_){ }
-    return "./assets/Menu.json";
+    return "./assets/";
   })();
+  const IMG_BASE = ASSET_BASE + "Img/";
+  const MENU_URL = ASSET_BASE + "Menu.json";
+  const ASSET_VER = (() => {
+    try{ if (window.HERO_ASSET_VER != null) return String(window.HERO_ASSET_VER); }catch(_){ }
+    return String(Date.now());
+  })();
+
   const ROOT_ID = "heroStartMenu";
 
   let labels = Object.create(null);
@@ -32,6 +39,8 @@
   let __pageReady = false;
   let __pendingAction = null; // () => void
   let __menuRendered = false;
+  let __preloadDone = false;
+  let __preloadPromise = null;
 
   function esc(s){
     return String(s ?? "").replace(/[&<>\"']/g, (c) => ({"&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;","'":"&#39;"})[c]);
@@ -54,6 +63,109 @@ function validateKeyedArray(arr, context){
     ok++;
   }
   return ok > 0;
+}
+
+function withVer(url){
+  const sep = url.includes("?") ? "&" : "?";
+  return url + sep + "v=" + encodeURIComponent(ASSET_VER);
+}
+
+function updateProgress(done, total){
+  const el = document.getElementById(ROOT_ID);
+  if (!el) return;
+  const bar = el.querySelector(".startProgress__bar");
+  const label = el.querySelector(".startProgress__label");
+  if (!bar || !label) return;
+  const pct = total > 0 ? Math.min(100, Math.max(0, Math.round((done / total) * 100))) : 0;
+  bar.style.width = pct + "%";
+  label.textContent = "???????? " + pct + "%";
+}
+
+function setLoadingState(isLoading){
+  const el = document.getElementById(ROOT_ID);
+  if (!el) return;
+  el.classList.toggle("is-loading", !!isLoading);
+  el.querySelectorAll(".startBtn").forEach(btn => {
+    btn.setAttribute("aria-disabled", isLoading ? "true" : "false");
+  });
+}
+
+function preloadFetch(url){
+  return fetch(withVer(url), { cache: "force-cache" })
+    .then(r => r.ok ? r.arrayBuffer().catch(() => null) : null)
+    .catch(() => null);
+}
+
+function preloadImage(url){
+  return new Promise((resolve) => {
+    const img = new Image();
+    img.onload = () => resolve(true);
+    img.onerror = () => resolve(false);
+    img.decoding = "async";
+    img.src = withVer(url);
+  });
+}
+
+async function preloadAssets(){
+  if (__preloadPromise) return __preloadPromise;
+  __preloadPromise = (async () => {
+    const tasks = [];
+    let done = 0;
+    function addTask(p){
+      tasks.push(p);
+      updateProgress(done, tasks.length);
+      p.finally(() => {
+        done += 1;
+        updateProgress(done, tasks.length);
+      });
+    }
+
+    const menuTask = preloadFetch(MENU_URL);
+    const statsTask = preloadFetch(ASSET_BASE + "Stats.json");
+    const itemsTask = preloadFetch(ASSET_BASE + "Items.json");
+    const gameTask = fetch(withVer(ASSET_BASE + "Game.json"), { cache: "force-cache" })
+      .then(r => r.ok ? r.json() : null)
+      .catch(() => null);
+
+    addTask(menuTask);
+    addTask(statsTask);
+    addTask(itemsTask);
+    addTask(gameTask);
+
+    const game = await gameTask;
+    const pages = Array.isArray(game) ? game.map(it => String(it && it.page ? it.page : "")).filter(Boolean) : [];
+    const pageImages = new Set(pages.map(p => p + ".webp"));
+    pageImages.add("000.webp");
+
+    const taleImages = [
+      "tale1.webp","tale2.webp","tale3.webp","tale4.webp","tale5.webp",
+      "tale6_a.webp","tale6_b.webp","tale7.webp","tale8.webp","tale8_a.webp","tale8_b.webp"
+    ];
+
+    for (const name of pageImages){
+      addTask(preloadImage(IMG_BASE + encodeURIComponent(name)));
+    }
+    for (const name of taleImages){
+      addTask(preloadImage(IMG_BASE + encodeURIComponent(name)));
+    }
+
+    const audioFiles = [
+      "Maintheme.mp3","paper.wav","victory.wav","loose.wav","take.wav",
+      "battle.wav","battlewin.wav","battleloose.wav"
+    ];
+    for (const name of audioFiles){
+      addTask(preloadFetch(ASSET_BASE + name));
+    }
+
+    addTask(preloadFetch(ASSET_BASE + "blank.webp"));
+
+    await Promise.allSettled(tasks);
+    __preloadDone = true;
+    updateProgress(tasks.length, tasks.length);
+    setLoadingState(false);
+    return true;
+  })();
+  return __preloadPromise;
 }
 
   async function loadMenu(){
@@ -161,13 +273,18 @@ function validateKeyedArray(arr, context){
       { k: "options", t: label("options") },
     ];
 
+    const progress = '<div class="startProgress" aria-live="polite">' +
+      '<div class="startProgress__bar"></div>' +
+      '<div class="startProgress__label">???????? 0%</div>' +
+    '</div>';
+
     el.innerHTML = items.map(it =>
       '<div class="startItem">' +
         '<span class="startBtn" data-start-item="' + esc(it.k) + '">' +
           esc(it.t) +
         '</span>' +
       '</div>'
-    ).join("");
+    ).join("") + progress;
     __menuRendered = true;
 
     el.querySelectorAll("[data-start-item]").forEach(node => {
@@ -175,6 +292,8 @@ function validateKeyedArray(arr, context){
         e.preventDefault();
         e.stopPropagation();
         const k = node.getAttribute("data-start-item") || "";
+
+        if (!__preloadDone) return;
 
         if (k === "new"){
           runOrQueue(() => {
@@ -222,6 +341,8 @@ function validateKeyedArray(arr, context){
   async function init(){
     await loadMenu();
     render();
+    setLoadingState(true);
+    preloadAssets().catch(() => { setLoadingState(false); });
     // Until index dispatches hero:page-changed, keep it visible.
     setVisible(true);
     scheduleMenuCheck("init", true);
