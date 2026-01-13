@@ -70,9 +70,8 @@
   }
 
   function clampWidthToMin(r){
-    const minW = 512;
     const w0 = Math.round(r.width);
-    const width = Math.max(minW, w0);
+    const width = w0;
     const left = Math.round(r.left + (r.width - width) / 2);
     return { width, left };
   }
