@@ -545,4 +545,981 @@ function validateKeyedArray(arr, context){
     return { name, args };
   }
 
-  // ---------- Core actions ----
+  // ---------- Core actions ----------
+  function action_stats(){
+    const r = roll2d6();
+    const picked = STATS_BY_SUM[r.sum] || STATS_BY_SUM[7];
+    state.stats = { ...state.stats, ...picked };
+    ensureMaxStrengthFromStats();
+    save();
+    pushToUI();
+    pushInventoryToUI();
+    logInfo("stats(): rolled", r.a, "+", r.b, "=", r.sum, "=>", picked);
+    return { roll:r, stats:{...state.stats} };
+  }
+
+  function action_luck(successPage, failPage){
+    const r = roll2d6();
+    const curLuck = Number(state.stats.Luck ?? 0);
+    const ok = r.sum <= curLuck;
+
+    playSfx(ok ? SFX.victory : SFX.loose);
+
+    state.stats.Luck = Math.max(0, curLuck - 1);
+    save();
+    pushToUI();
+
+    nav(ok ? successPage : failPage);
+    return { roll:r, ok, stats:{...state.stats} };
+  }
+
+  function action_reac(threshold, successPage, failPage){
+    const thr = Number(threshold);
+    const need = Number.isFinite(thr) ? thr : 0;
+
+    const cur = Number(state.stats.Reaction ?? 0);
+    const ok = cur >= need;
+
+    playSfx(ok ? SFX.victory : SFX.loose);
+
+    // after check, Reaction += 1 (always)
+    state.stats.Reaction = cur + 1;
+    save();
+    pushToUI();
+
+    nav(ok ? successPage : failPage);
+    return { ok, need, stats:{...state.stats} };
+  }
+
+  // ---------- Inventory actions ----------
+  function findFirstEmptySpellSlot(){
+  if (!Array.isArray(state.spellbook)) state.spellbook = Array(SPELLBOOK_SLOTS).fill(null);
+  for (let i=0;i<state.spellbook.length;i++){
+    if (!state.spellbook[i]) return i;
+  }
+  return -1;
+}
+
+function findFirstEmptySlot(){
+    for (let i=0;i<state.inventory.length;i++){
+      if (!state.inventory[i]) return i;
+    }
+    return -1;
+  }
+
+  function action_take(itemId, _fromEnsure){
+    const id = String(itemId||"").trim();
+    if (!id) return null;
+
+    // Rule: the same item can only be taken once per session/save.
+    // We enforce this BEFORE any slot logic, so the UI stays consistent.
+    if (!state.taken) state.taken = Object.create(null);
+    if (state.taken[id]){
+      // already taken earlier -> ignore silently (no sound, no UI change)
+      return { ok:false, reason:"already", id };
+    }
+
+    // Load Items.json lazily if it was not available at boot.
+    // NOTE: take() can be invoked from page text links, so it MUST NOT throw.
+    if (!state.itemsDb && !_fromEnsure) {
+      // Items.json not ready: load then retry once to preserve item typing.
+      ensureItemsDb().then(() => { action_take(id, true); }).catch(()=>{});
+      return { ok:false, reason:"items_pending", id };
+    }
+
+    const typ = itemType(id);
+    const opt = Number(itemOption(id));
+    
+
+
+    // MAGIC ROUTE: spells go to spellbook (6 slots), NEVER to backpack inventory.
+    if (typ === "spell" || isSpellId(id)){
+      if (!Array.isArray(state.spellbook)) state.spellbook = Array(SPELLBOOK_SLOTS).fill(null);
+      const si = findFirstEmptySpellSlot();
+      if (si < 0){
+        pushInventoryToUI();
+        return { ok:false, reason:"spellbook_full", id };
+      }
+      state.spellbook[si] = id;
+      state.taken[id] = 1;
+      save();
+      playSfx(SFX.take);
+      pushInventoryToUI();
+      return { ok:true, spell:true, slot: si+1, id };
+    }
+if (typ === "equip" && (opt === 1 || opt === 2 || opt === 3)){
+  // Equip items NEVER occupy backpack slots (1–7).
+  // They go directly into equipment slot by option:
+  //   1 = Sheath (Ножны), 2 = Worn (На человеке), 3 = Clothes (Одежда)
+  //
+  // IMPORTANT RULE (user requirement):
+  //   If the target equipment slot is already occupied,
+  //   the new item OVERWRITES that slot.
+  //   The previously equipped item is NOT moved into inventory.
+  //   (This prevents equip items from "leaking" into backpack.)
+  state.equip[opt] = id;
+
+  // Enforce "take only once" for equip items too.
+  state.taken[id] = 1;
+
+  save();
+  playSfx(SFX.take);
+  pushInventoryToUI();
+  return { ok:true, equipped:true, slot:opt, id };
+}
+
+// Normal items: put into backpack (7 slots) (7 slots)
+    const empty = findFirstEmptySlot();
+    if (empty < 0){
+      // No space. Do nothing.
+      pushInventoryToUI();
+      return { ok:false, reason:"full", id };
+    }
+
+    state.inventory[empty] = id;
+    state.taken[id] = 1;
+    save();
+    playSfx(SFX.take);
+    pushInventoryToUI();
+    return { ok:true, equipped:false, slot:empty+1, id };
+  }
+
+  function action_delete(slotIndex){
+    const n = Number(slotIndex);
+    const idx = Number.isFinite(n) ? (n|0) - 1 : -1;
+    if (idx < 0 || idx >= state.inventory.length) return { ok:false };
+    const id = state.inventory[idx];
+    if (!id) return { ok:false, empty:true };
+    state.inventory[idx] = null;
+    save();
+    pushInventoryToUI();
+    return { ok:true, id, slot:idx+1 };
+  }
+
+  function action_usage(slotIndex){
+    // "usage" is used for food items.
+    const n = Number(slotIndex);
+    const idx = Number.isFinite(n) ? (n|0) - 1 : -1;
+    if (idx < 0 || idx >= state.inventory.length) return { ok:false };
+    const id = state.inventory[idx];
+    if (!id) return { ok:false, empty:true };
+
+    const typ = itemType(id);
+    if (typ !== "food") return { ok:false, notFood:true };
+
+    const add = Number(itemOption(id));
+    const delta = Number.isFinite(add) ? (add|0) : 0;
+
+    const cur = Number(state.stats.Strength ?? 0);
+    const maxS = Number(state.maxStrength ?? 0) || cur; // fallback: if not set, cap to current
+    const next = Math.min(maxS, cur + Math.max(0, delta));
+    state.stats.Strength = next;
+
+    // Consumed: remove from inventory.
+    state.inventory[idx] = null;
+
+    save();
+    pushToUI();
+    pushInventoryToUI();
+    return { ok:true, id, slot:idx+1, strength:{ before:cur, after:next, max:maxS } };
+  }
+
+  // Keep maxStrength in sync once the player rolls initial stats.
+  // This is the ONLY time maxStrength should be (re)defined automatically.
+  function ensureMaxStrengthFromStats(){
+    const s = Number(state.stats.Strength ?? 0);
+    if (!Number.isFinite(s)) return;
+    if (!state.maxStrength || state.maxStrength <= 0){
+      state.maxStrength = s|0;
+    }
+  }
+
+  // ---------- Battle ----------
+  function stageRect(){
+    const st = window.__HERO_STAGE || document.querySelector(".hpf-stage");
+    if (!st) return null;
+    const r = st.getBoundingClientRect();
+    if (!r.width || !r.height) return null;
+    return r;
+  }
+
+  function pageMin(){
+    const cs = getComputedStyle(document.documentElement);
+    const w = parseFloat(cs.getPropertyValue("--page-w")) || 1024;
+    const h = parseFloat(cs.getPropertyValue("--page-h")) || 1536;
+    return { w, h };
+  }
+
+  function clampWidthToMin(r){
+    const min = pageMin();
+    const enforce = window.innerWidth >= min.w && window.innerHeight >= min.h;
+    const w0 = Math.round(r.width);
+    if (!enforce) return { width: w0, left: Math.round(r.left) };
+    const w = Math.max(min.w, w0);
+    const left = Math.round(r.left + (r.width - w) / 2);
+    return { width: w, left };
+  }
+
+  function ensureBattleUI(){
+    let bf = document.getElementById("battlefield");
+    if (!bf){
+      bf = document.createElement("div");
+      bf.id = "battlefield";
+      bf.innerHTML = `<div id="battlefield__inner"></div>`;
+      document.body.appendChild(bf);
+    }
+    return bf;
+  }
+
+
+  // Hide/show non-battle UI fields when battle overlay is visible.
+  // We hide the bottom text field and top stats field (and start button if present),
+  // then restore their previous inline display values after battle ends.
+  
+/* ============================================================
+   BATTLE MODE UI HIDING (INTERACTS WITH "?" HELP BUTTON)
+   ------------------------------------------------------------
+   When entering battle mode we MUST hide the normal UI panels:
+     - #textfield (bottom story)
+     - #statsfield (top stats + "?" button)
+     - #startGameBtn (start overlay)
+   so they do not overlap with #battlefield and do not intercept clicks.
+
+   Implementation detail:
+     - We store previous inline display value in data-prevDisplay.
+     - We restore it verbatim when battle ends.
+     - This is intentionally symmetric with the help overlay's __hideUiPanels()
+       in textfield.v2.js. Keep them aligned to avoid "forgot to restore" bugs. fileciteturn1file14turn1file4
+
+   IMPORTANT FOR FUTURE EDITS:
+     - Do NOT replace display:none with opacity/visibility only.
+       Hidden-but-clickable layers are the #1 reason the "?" becomes dead.
+     - If you add new UI ids that must be hidden during battle (e.g. inventory panel),
+       add them here in the ids[] list AND store/restore their previous display.
+   ============================================================ */
+  function setNonBattleFieldsHidden(hidden){
+    const ids = ["textfield", "statsfield", "startGameBtn"];
+    for (const id of ids){
+      const el = document.getElementById(id);
+      if (!el) continue;
+
+      if (hidden){
+        if (el.dataset && el.dataset.prevDisplay === undefined){
+          el.dataset.prevDisplay = el.style.display || "";
+        }
+        el.style.display = "none";
+      } else {
+        const prev = (el.dataset && el.dataset.prevDisplay !== undefined) ? el.dataset.prevDisplay : "";
+        el.style.display = prev;
+        if (el.dataset) delete el.dataset.prevDisplay;
+      }
+    }
+  }
+
+  function positionBattleUI(){
+    const bf = ensureBattleUI();
+    const inner = document.getElementById("battlefield__inner");
+    const r = stageRect();
+    if (!r) return;
+
+    const h = Math.round(r.height * 0.50);
+    const dim = clampWidthToMin(r);
+    const w = dim.width;
+    const left = dim.left;
+    const top = Math.round(r.top + (r.height - h) / 2);
+
+    bf.style.left = left + "px";
+    bf.style.top = top + "px";
+    bf.style.width = w + "px";
+    bf.style.height = h + "px";
+
+    if (inner) inner.style.pointerEvents = "auto";
+  }
+
+  function flashStatValue(key){
+    const el = document.querySelector(`#statsfield__inner [data-stat-val="${CSS.escape(String(key))}"]`);
+    if (!el) return;
+    el.classList.add("flash-red");
+    setTimeout(()=>el.classList.remove("flash-red"), 450);
+  }
+
+  function flashBattleEl(el){
+    if (!el) return;
+    el.classList.add("flash-red");
+    setTimeout(()=>el.classList.remove("flash-red"), 450);
+  }
+
+  // --- battle HP label flashing (works even when renderBattle rebuilds DOM) ---
+  function queueBattleFlashPlayer(){
+    const battle = state.battle;
+    if (!battle) return;
+    battle._flashPlayer = true;
+  }
+  function queueBattleFlashEnemy(idx){
+    const battle = state.battle;
+    if (!battle) return;
+    if (!battle._flashEnemies) battle._flashEnemies = {};
+    battle._flashEnemies[String(idx)] = true;
+  }
+  function applyBattleFlashAfterRender(){
+    const battle = state.battle;
+    if (!battle) return;
+
+    const toFlash = [];
+
+    if (battle._flashPlayer){
+      const pHpEl = document.getElementById("bfPlayerHPLabel");
+      if (pHpEl) toFlash.push(pHpEl);
+    }
+
+    if (battle._flashEnemies){
+      for (const k of Object.keys(battle._flashEnemies)){
+        if (!battle._flashEnemies[k]) continue;
+        const hpEl = document.querySelector(`.bf-hplabel[data-ehp="${CSS.escape(String(k))}"]`);
+        if (hpEl) toFlash.push(hpEl);
+      }
+    }
+
+    // clear flags now (DOM will handle visual timeout)
+    battle._flashPlayer = false;
+    battle._flashEnemies = null;
+
+    for (const el of toFlash){
+      el.classList.add("flash-red");
+      setTimeout(()=>el.classList.remove("flash-red"), 450);
+    }
+  }
+
+  function parseBattleArgs(arg0){
+    // arg0 expected like "[8,7|6,9|10,5]" (may be with spaces)
+    const s = String(arg0||"").trim();
+    const m = /^\[(.*)\]$/.exec(s);
+    if (!m) return null;
+    const body = m[1].trim();
+    if (!body) return null;
+
+    const enemies = body.split("|").map(x=>x.trim()).filter(Boolean).map(pair=>{
+      const mm = /^\s*([0-9]+)\s*,\s*([0-9]+)\s*$/.exec(pair);
+      if (!mm) return null;
+      return { str: Number(mm[1]), dex: Number(mm[2]), alive:true, fled:false };
+    }).filter(Boolean);
+
+    if (!enemies.length || enemies.length > 3) return null;
+    return enemies;
+  }
+
+  function battleLayoutRows(count){
+    // indices -> row (1..3). player always row 2.
+    if (count === 1) return [2];
+    if (count === 2) return [2,1]; // enemy0 row2, enemy1 row1 (your rule)
+    return [1,2,3]; // 3 enemies
+  }
+
+  function renderBattle(){
+    const battle = state.battle;
+    if (!battle) return;
+    syncBattleTarget();
+
+    const inner = document.getElementById("battlefield__inner");
+    if (!inner) return;
+
+    const rows = battleLayoutRows(battle.enemies.length);
+
+    // build 3-row grid
+    const slots = [null,null,null]; // row1..row3 store enemy index
+    for (let i=0;i<rows.length;i++){
+      const row = rows[i];
+      slots[row-1] = i;
+    }
+
+    const playerStr = battle.playerStr;
+    const playerDex = battle.playerDex;
+    const locked = !!battle.finished;
+
+    function enemyCard(enemyIdx){
+      const E = battle.enemies[enemyIdx];
+      if (!E || !E.alive) return ""; // defeated/fled enemies disappear
+
+      const lockedLocal = !!battle.finished;
+      const checked = (battle.target === enemyIdx) ? "checked" : "";
+      const disabled = (lockedLocal || battle.enemies.length === 1) ? "disabled" : "";
+
+      return `
+        <div class="bf-enemy" data-e="${enemyIdx}">
+          <div class="bf-enemyRow">
+            <input class="bf-radio" type="radio" name="bfTarget" value="${enemyIdx}" ${checked} ${disabled}>
+            <div class="bf-enemyBody">
+              <div class="bf-title">Противник</div>
+              <div class="bf-statline">
+                <span class="bf-hplabel" data-ehp="${enemyIdx}">HP</span>
+                <span class="bf-val" data-eval="${enemyIdx}">${E.str}</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      `;
+    }
+
+    const playerCell = `
+      <div class="bf-player">
+        <div class="bf-title">Вы</div>
+        <div class="bf-statline">
+          <span class="bf-hplabel" id="bfPlayerHPLabel">HP</span>
+          <span class="bf-val" id="bfPlayerVal">${playerStr}</span>
+        </div>
+      </div>
+    `;
+
+    const enemiesHtml = battle.enemies
+      .map((_, i) => enemyCard(i))
+      .filter(Boolean)
+      .join("");
+
+    const taleCell = `
+      <div class="bf-taleWrap">
+        <img id="bfTaleImg" class="bf-tale" src="${TALE.f1}" alt="battle frame">
+      </div>
+    `;
+
+    const grid = `
+      <div class="bf-grid">
+        ${playerCell}
+        ${taleCell}
+        <div class="bf-enemies">${enemiesHtml}</div>
+      </div>
+    `;
+
+
+        const actions = `
+      <div class="bf-actions">
+        <button class="bf-btn" type="button" data-move="lunge" ${locked ? "disabled" : ""}>Выпад</button>
+        <button class="bf-btn" type="button" data-move="pirouette" ${locked ? "disabled" : ""}>Пируэт</button>
+      </div>
+    `;
+
+    const logLines = Array.isArray(battle.log) ? battle.log : ["","","","",""];
+    const log = `
+      <div class="bf-log" aria-label="battle log">
+        <div class="bf-logline" data-ln="0">${escapeHtml(logLines[0] || "")}</div>
+        <div class="bf-logline" data-ln="1">${escapeHtml(logLines[1] || "")}</div>
+        <div class="bf-logline" data-ln="2">${escapeHtml(logLines[2] || "")}</div>
+        <div class="bf-logline" data-ln="3">${escapeHtml(logLines[3] || "")}</div>
+        <div class="bf-logline ${battle.clickableEnd ? "bf-logline--clickable" : ""}" data-ln="4">${escapeHtml(logLines[4] || "")}</div>
+      </div>
+    `;
+
+    inner.innerHTML = `<div class="bf-main">${grid}${actions}</div>${log}`;
+
+    // target radios + click-to-select enemy
+    inner.querySelectorAll('input[name="bfTarget"]').forEach(inp=>{
+      inp.addEventListener("change", () => {
+        battle.target = Number(inp.value);
+        syncBattleTarget();
+        // re-render so the checked state is always in sync and any per-target UI updates apply
+        renderBattle();
+      });
+    });
+
+    // allow clicking the whole enemy block to select it (not just the small radio)
+    inner.querySelectorAll(".bf-enemy").forEach(box=>{
+      box.addEventListener("click", (ev) => {
+        if (locked || (battle.enemies.length === 1)) return;
+        const idx = Number(box.getAttribute("data-e"));
+        if (!Number.isFinite(idx)) return;
+        battle.target = idx;
+        syncBattleTarget();
+        renderBattle();
+        ev.preventDefault();
+      });
+    });
+
+    // move buttons
+    inner.querySelectorAll(".bf-btn").forEach(btn=>{
+      btn.addEventListener("click", () => {
+        const move = btn.getAttribute("data-move");
+        battleTurn(move);
+      });
+    });
+
+    // clickable end line
+    const endLine = inner.querySelector('.bf-logline[data-ln="4"]');
+    if (endLine && battle.clickableEnd){
+      endLine.addEventListener("click", () => {
+        if (!state.battle || !state.battle.finished || !state.battle.clickableEnd) return;
+        battleEndFinalize(!!state.battle.win);
+      });
+    }
+
+    // apply HP label flashes (if any) after rebuilding DOM
+    applyBattleFlashAfterRender();
+
+  }
+
+  function updateBattleNumbers(prevPlayerStr, prevEnemyStrs){
+    const battle = state.battle;
+    if (!battle) return;
+
+    // player
+    const pValEl = document.getElementById("bfPlayerVal");
+    const pHpEl  = document.getElementById("bfPlayerHPLabel");
+    if (pValEl){
+      if (battle.playerStr !== prevPlayerStr) flashBattleEl(pHpEl || pValEl);
+      pValEl.textContent = String(battle.playerStr);
+    }
+
+    // enemies
+    for (let i=0;i<battle.enemies.length;i++){
+      const valEl = document.querySelector(`[data-eval="${i}"]`);
+      const hpEl  = document.querySelector(`[data-ehp="${i}"]`);
+      const E = battle.enemies[i];
+      const v = E.alive ? E.str : 0;
+      if (valEl){
+        if (prevEnemyStrs[i] !== v) flashBattleEl(hpEl || valEl);
+        valEl.textContent = String(v);
+      }
+    }
+  }
+
+  function pickNextAliveTarget(){
+    const battle = state.battle;
+    if (!battle) return;
+    const n = battle.enemies.length;
+    for (let i=0;i<n;i++){
+      if (battle.enemies[i].alive) { battle.target = i; return; }
+    }
+    battle.target = 0;
+  }
+
+
+  function syncBattleTarget(){
+    const battle = state.battle;
+    if (!battle) return;
+
+    // ensure target points to a living enemy
+    const n = battle.enemies.length;
+    let t = Number(battle.target);
+    if (!Number.isFinite(t) || t < 0 || t >= n || !battle.enemies[t] || !battle.enemies[t].alive){
+      // pick first alive
+      t = 0;
+      for (let i=0;i<n;i++){
+        if (battle.enemies[i] && battle.enemies[i].alive){ t = i; break; }
+      }
+      battle.target = t;
+    }
+
+    const heroDex = Number((state.stats.Dexterity ?? state.stats.Dex ?? state.stats.DEX ?? battle.playerDex ?? 0));
+    const enemy = battle.enemies[battle.target];
+    const enemyDex = Number((enemy?.dex ?? enemy?.Dexterity ?? enemy?.Dex ?? enemy?.DEX ?? 0));
+
+    battle.playerDex = heroDex;
+    battle.targetDex = enemyDex;
+    battle.dexAdv = (heroDex > enemyDex);
+    battle.dexDis = (heroDex < enemyDex);
+
+    // precompute thresholds for UI/log correctness
+    battle.thrustMax = battle.dexAdv ? 4 : 3;   // "Выпад" success if r <= thrustMax
+    battle.pirMin    = battle.dexAdv ? 3 : 4;   // "Пируэт" success if r >= pirMin
+  }
+
+  function battleSetFinished(win){
+    const battle = state.battle;
+    if (!battle) return;
+    if (battle.finished) return;
+
+    battle.finished = true;
+    battle.win = !!win;
+    battle.clickableEnd = true;
+
+    // play outcome sound once (no auto-close)
+    playSfx(battle.win ? SFX.battlewin : SFX.battleloose);
+
+    renderBattle();
+  }
+
+  function battleEndFinalize(win){
+    const battle = state.battle;
+    if (!battle) return;
+
+    state.battle = null;
+    state.mode = "NORMAL";
+    window.dispatchEvent(new CustomEvent("hero:mode", { detail:{ mode:"NORMAL" } }));
+
+    const bf = document.getElementById("battlefield");
+    if (bf){
+      bf.classList.remove("is-visible");
+      bf.style.display = "none";
+    }
+
+    // show panels and then navigate (let index flip)
+    setNonBattleFieldsHidden(false);
+    window.dispatchEvent(new CustomEvent("hero:ui-show", { detail:{ delayMs: 1000 } }));
+    nav(win ? battle.winPage : battle.losePage);
+  }
+
+  function battleTurn(move){
+    const battle = state.battle;
+    if (!battle) return;
+    if (battle.finished) return;
+
+    unlockAudioFromGesture();
+    playSfx(SFX.battle);
+
+    // increment turn on every player action
+    battle.turn = (battle.turn | 0) + 1;
+
+    const tIdx = battle.target;
+    const enemy = battle.enemies[tIdx];
+    if (!enemy || !enemy.alive) { pickNextAliveTarget(); renderBattle(); return; }
+
+    // always re-sync on action (target may have changed)
+    syncBattleTarget();
+    const dexAdv = !!battle.dexAdv;
+    const r = roll1d6();
+
+    // Determine success ranges
+    let success = false;
+    let need = 0;
+    let op = ""; // "≤" or "≥" for log
+    if (move === "lunge"){
+      // base 1-3; if dexAdv 1-4  => r ≤ need
+      need = battle.thrustMax;
+      op = "≤";
+      success = (r>=1 && r<=need);
+    } else {
+      // pirouette base 4-6; if dexAdv 3-6  => r ≥ need
+      need = battle.pirMin;
+      op = "≥";
+      success = (r>=need && r<=6);
+    }
+
+    let dmgDone = 0;
+    let dmgTaken = 0;
+    let enemyFled = false;
+
+    if (success){
+      // damage
+      if (dexAdv) dmgDone += 1;
+      dmgDone += Math.floor(battle.playerStr / 4);
+
+      const prevE = enemy.str;
+      enemy.str = Math.max(0, enemy.str - dmgDone);
+      if (enemy.str !== prevE) queueBattleFlashEnemy(tIdx);
+      if (enemy.str === 0){
+        enemy.alive = false; // defeated -> disappears
+      }
+
+      // flee check (only if still alive)
+      const fleeRoll = roll1d6();
+      if (enemy.alive && enemy.str < fleeRoll){
+        enemy.alive = false;
+        enemy.fled = true;
+        enemyFled = true;
+      }
+    } else {
+      // enemy hits player
+      dmgTaken = Math.floor(enemy.str / 4);
+      const prevP = battle.playerStr;
+      battle.playerStr = Math.max(0, battle.playerStr - dmgTaken);
+      if (battle.playerStr !== prevP) queueBattleFlashPlayer();
+
+      // sync Strength back to global stats
+      state.stats.Strength = battle.playerStr;
+      save();
+      pushToUI();
+      if (dmgTaken > 0) flashStatValue("Strength");
+
+      // flee check (only if still alive)
+      const fleeRoll = roll1d6();
+      if (enemy.alive && enemy.str < fleeRoll){
+        enemy.alive = false;
+        enemy.fled = true;
+        enemyFled = true;
+      }
+    }
+
+    // pick next target if current is gone
+    if (!enemy.alive) pickNextAliveTarget();
+
+    // ---- build 5-line log (exactly) ----
+    const line1 = `${t("Turn","Turn") } ${battle.turn}`;
+    const line2 = dexAdv ? t("Dexgood","Dex good") : t("Dexbad","Dex bad");
+    const reason = `(${r}${op}${need})`;
+    const line3 = success
+      ? `${t("Hitgood","Hit good")} ${dmgDone} ${reason}`
+      : `${t("Hitbad","Hit bad")} ${dmgTaken} ${reason}`;
+
+    // line4: enemy defeated has priority over flee status
+    const enemyDied = (success && enemy.str === 0);
+    const line4 = enemyDied
+      ? t("Enemydie","Enemy defeated")
+      : (enemyFled ? t("Fleebad","Flee bad") : t("Fleegood","Flee good"));
+
+    // outcome line 5
+    const anyAlive = battle.enemies.some(e => e.alive);
+    let outcomeKey = "battlecont";
+    if (!anyAlive && battle.playerStr > 0) outcomeKey = "battlevict";
+    else if (battle.playerStr <= 0 && anyAlive) outcomeKey = "battledie";
+
+    const line5 = t(outcomeKey, outcomeKey);
+
+    // If battle ended, keep final frame on the proper ending still.
+    let endFrame = TALE.f1;
+    if (outcomeKey === "battledie") endFrame = TALE.f8a;
+    else if (outcomeKey === "battlevict") endFrame = TALE.f8b;
+
+    // Play battle animation once per action (frame 6 depends on who takes damage).
+    playBattleTaleOnce(success ? "enemy" : "hero", endFrame);
+
+    battle.log = [line1, line2, line3, line4, line5];
+    battle.clickableEnd = (outcomeKey === "battlevict" || outcomeKey === "battledie");
+
+    // mark finished but DO NOT close automatically
+    if (outcomeKey === "battlevict") battleSetFinished(true);
+    else if (outcomeKey === "battledie") battleSetFinished(false);
+
+    renderBattle();
+  }
+
+  function action_battle(arg0, winPage, losePage){
+    const enemies = parseBattleArgs(arg0);
+    if (!enemies){
+      logWarn("battle: bad args", arg0);
+      return null;
+    }
+
+    // enter battle mode
+    state.mode = "BATTLE";
+    window.dispatchEvent(new CustomEvent("hero:mode", { detail:{ mode:"BATTLE" } }));
+    window.dispatchEvent(new CustomEvent("hero:ui-hide"));
+    setNonBattleFieldsHidden(true);
+
+    // show under page as current page (no change) - do nothing
+
+    // create battle state
+    state.battle = {
+      enemies,
+      target: 0,
+      turn: 0,
+      log: ["","","","",""], // empty until first move
+      finished: false,
+      win: false,
+      clickableEnd: false,
+      playerStr: Number(state.stats.Strength ?? 0),
+      playerDex: Number((state.stats.Dexterity ?? state.stats.Dex ?? 0)),
+      winPage: String(winPage || ""),
+      losePage: String(losePage || ""),
+    };
+
+    const bf = ensureBattleUI();
+    positionBattleUI();
+    bf.style.display = "block";
+    bf.classList.add("is-visible");
+    pickNextAliveTarget();
+    syncBattleTarget();
+    renderBattle();
+
+    // keep positioned on resize
+    return { enemiesCount: enemies.length };
+  }
+
+  // ---------- Registry ----------
+  const registry = Object.create(null);
+  registry.stats = () => action_stats();
+  registry.luck  = (args) => action_luck(args[0], args[1]);
+  registry.reac  = (args) => action_reac(args[0], args[1], args[2]);
+  registry.take   = (args) => action_take(args[0]);
+  registry.delete = (args) => action_delete(args[0]);
+  registry.usage  = (args) => action_usage(args[0]);
+  registry.battle = (args) => action_battle(args[0], args[1], args[2]);
+
+  function runAction(specRaw, linkPageFallback){
+    const parsed = parseActionSpec(specRaw);
+    if (!parsed){
+      logWarn("bad action spec:", specRaw);
+      return null;
+    }
+
+    unlockAudioFromGesture();
+
+    const fn = registry[parsed.name];
+    if (typeof fn !== "function"){
+      logWarn("unknown action:", parsed.name, "spec:", specRaw);
+      return null;
+    }
+
+    const res = fn(parsed.args);
+
+    // If stats accompanies a link, navigate after setting stats.
+    if (parsed.name === "stats" && linkPageFallback){
+      nav(linkPageFallback);
+    }
+
+    return res;
+  }
+
+  // ---------- Events ----------
+  window.addEventListener("pointerdown", unlockAudioFromGesture, { passive:true, capture:true });
+
+  window.addEventListener("hero:action", (e) => {
+    const d = e && e.detail ? e.detail : null;
+    if (!d) return;
+    const nameOrSpec = (d.name != null ? String(d.name) : "");
+    const pageFallback = (d.page != null ? String(d.page) : "");
+    if (!nameOrSpec) return;
+    try{ runAction(nameOrSpec, pageFallback); }catch(err){ console.error(err); }
+  });
+
+  function syncUI(){
+    // keep panels + battle positioned when visible
+    if (window.HeroTextfield && typeof window.HeroTextfield.sync === "function") window.HeroTextfield.sync();
+    if (state.mode === "BATTLE"){
+      positionBattleUI();
+    }
+  }
+
+  window.addEventListener("resize", () => { if (state.mode==="BATTLE") positionBattleUI(); }, { passive:true });
+  if (window.visualViewport){
+    window.visualViewport.addEventListener("resize", () => { if (state.mode==="BATTLE") positionBattleUI(); }, { passive:true });
+    window.visualViewport.addEventListener("scroll", () => { if (state.mode==="BATTLE") positionBattleUI(); }, { passive:true });
+  }
+
+  // ---------- Boot ----------
+  async function boot(){
+    resetToZero(false);
+    await loadMeta();
+    await ensureItemsDb();
+    pushInventoryToUI();
+
+    // push meta+zeros as soon as textfield exists
+    const t0 = performance.now();
+    const timer = setInterval(() => {
+      if (pushToUI()) clearInterval(timer);
+      if (performance.now() - t0 > 6000) clearInterval(timer);
+    }, 60);
+  }
+
+  
+  // Track current page (for Save/Load)
+  window.addEventListener("hero:navigate", (e) => {
+    try{
+      const p = e && e.detail && e.detail.page;
+      if (p !== undefined) state.page = String(p);
+    }catch(_){}
+  }, true);
+
+  // Allow external UIs (options/start) to control volumes even if they don't call methods directly.
+  window.addEventListener("hero:set-music-volume", (e) => {
+    try{ setMusicVolume(e.detail && e.detail.value); }catch(_){}
+  });
+  window.addEventListener("hero:set-sfx-volume", (e) => {
+    try{ setSfxVolume(e.detail && e.detail.value); }catch(_){}
+  });
+
+if (document.readyState === "loading") {
+    document.addEventListener("DOMContentLoaded", boot, { once:true });
+  } else {
+    boot();
+  }
+
+  
+  // ---------- Save / Load ----------
+  // Stores engine state + current page to localStorage.
+  const LS_SAVE = STORAGE_KEY;
+
+  function __snapshot(){
+    return {
+      v: 1,
+      ts: Date.now(),
+      page: String(state.page || "000"),
+      stats: { ...state.stats },
+      meta: state.meta,
+      inventory: Array.isArray(state.inventory) ? state.inventory.slice() : [],
+      equip: { ...state.equip },
+      spellbook: Array.isArray(state.spellbook) ? state.spellbook.slice() : [],
+      taken: { ...state.taken },
+      maxStrength: Number(state.maxStrength || 0),
+    };
+  }
+
+  function saveNow(){
+    try{
+      const snap = __snapshot();
+      localStorage.setItem(LS_SAVE, JSON.stringify(snap));
+      return true;
+    }catch(_){}
+    return false;
+  }
+
+  function loadNow(){
+    let raw = null;
+    try{ raw = localStorage.getItem(LS_SAVE); }catch(_){}
+    if (!raw) return false;
+    try{
+      const obj = JSON.parse(raw);
+      if (!obj || typeof obj !== "object") return false;
+
+      // Restore pieces defensively
+      if (obj.stats && typeof obj.stats === "object") state.stats = { ...DEFAULT_STATS, ...obj.stats };
+      if (typeof obj.maxStrength === "number") state.maxStrength = Math.max(0, obj.maxStrength|0);
+
+      if (Array.isArray(obj.inventory)) state.inventory = obj.inventory.slice(0, 7).concat(Array(Math.max(0, 7-obj.inventory.length)).fill(null)).slice(0,7);
+      if (obj.equip && typeof obj.equip === "object") state.equip = { 1: obj.equip[1] ?? null, 2: obj.equip[2] ?? null, 3: obj.equip[3] ?? null };
+
+      if (Array.isArray(obj.spellbook)) state.spellbook = obj.spellbook.slice(0, SPELLBOOK_SLOTS).concat(Array(Math.max(0, SPELLBOOK_SLOTS-obj.spellbook.length)).fill(null)).slice(0,SPELLBOOK_SLOTS);
+      if (obj.taken && typeof obj.taken === "object") state.taken = { ...obj.taken };
+// NOTE: volumes are NOT stored in save slots; they live in localStorage volume keys.
+      // We only re-sync current volumes to PageFlip after loading.
+      try{ window.dispatchEvent(new CustomEvent("hero:volume-music", { detail:{ value: musicVolume } })); }catch(err){ logWarn("Stats.json fetch failed", err); }
+      try{ window.dispatchEvent(new CustomEvent("hero:volume-sfx", { detail:{ value: sfxVolume } })); }catch(err){ logWarn("Stats.json fetch failed", err); }
+
+      if (obj.page) state.page = String(obj.page);
+
+      // Push UI update immediately
+      pushToUI();
+      pushInventoryToUI();
+      syncUI();
+// Ensure background music does not layer on load.
+// Music params are NOT loaded from save. We restart the current track cleanly.
+
+
+// Navigate to saved page
+      window.dispatchEvent(new CustomEvent("hero:navigate", { detail:{ page: state.page } }));
+      // Restart music cleanly (stop old + start from beginning).
+      try{ window.dispatchEvent(new CustomEvent("hero:music-restart")); }catch(err){ logWarn("Stats.json fetch failed", err); }
+      return true;
+    }catch(_){}
+    return false;
+  }
+
+  function clearSave(){
+    try{ localStorage.removeItem(LS_SAVE); }catch(_){}
+  }
+
+window.HeroEngine = Object.freeze({
+    state,
+    roll2d6,
+    roll1d6,
+    run: runAction,
+    syncUI,
+    // Audio
+    playMusic,
+    stopMusic,
+    setMusicVolume,
+    getMusicVolume,
+    setSfxVolume,
+    getSfxVolume,
+    getVolumes,
+    // Save/Load
+    saveNow,
+    loadNow,
+    clearSave,
+    // Soft reset (does not clear save on disk).
+    newGame(){ resetToZero(false); },
+
+    register(name, fn){
+      const k = String(name||"").trim().toLowerCase();
+      if (!k || typeof fn !== "function") return;
+      registry[k] = fn;
+    }
+  });
+})();

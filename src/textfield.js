@@ -534,11 +534,15 @@ if (actionsJson || legacyAction){
 /* ============================================================
    HELP SYSTEM OVERVIEW (linked to the "?" button)
    ------------------------------------------------------------
-   1) User clicks "?" (statsHelp button). We dispatch "hero:stats-help".
-   2) We toggle dropdown menu (#heroHelpMenu) with:
-        - Character
-        - Magic
-        - Options
+   1) User clicks "?" (statsHelp button) -> delegated handler
+      dispatches: hero:stats-help. 
+
+   2) This file listens to hero:stats-help (see below in HELP MENU section)
+      and opens a small dropdown menu near the "?" button:
+        __openMenu() creates #heroHelpMenu and positions it relative to "?".
+        It clamps inside #statsfield bounds to prevent it from going outside
+        the top panel. 
+
    3) Clicking a dropdown item opens #helpfield (centered overlay):
         __openHelp(key) does:
           - refuses if battle is active (__battleActive()).
@@ -555,7 +559,6 @@ if (actionsJson || legacyAction){
        with showAfter()/hide() timing logic.
    ============================================================ */
 
-
 /* ================= HELP MENU (Menu.json) =================
    - Uses Menu.json (NOT Stats.json)
    - Click "?" => dropdown (character/magic/options)
@@ -567,42 +570,52 @@ if (actionsJson || legacyAction){
 
 const HERO_MENU_URL = "./assets/Menu.json";
 const HERO_MENU_KEYS = ["character","magic","options"];
-const HERO_MENU_FALLBACK = {
-  character: "Character",
-  magic: "Magic",
-  options: "Options",
-  delete: "Delete",
-  usage: "Use",
-  stats: "Stats",
-  inventory: "Inventory",
-  equipment: "Equipment",
-  equip1: "Equip 1",
-  equip2: "Equip 2",
-  equip3: "Equip 3",
-  maxStrength: "Max Strength",
-  music: "Music",
-  sfx: "SFX",
-  new: "New",
-  save: "Save",
-  load: "Load"
-};
+const HERO_MENU_FALLBACK = {};
 
-let __heroMenuEl = null;
-let __heroHelpEl = null;
+let __heroMenuLabels = null;   // {key: label}
+let __heroMenuEl = null;       // dropdown
+let __heroHelpEl = null;       // overlay
 let __heroHelpInner = null;
 let __heroHelpOpen = false;
 let __heroHelpKey = "";
-let __heroMenuLabels = null;
-let __heroInvView = null;
+let __menuLoadPromise = null;
+
+function __ensureMenuLabels(){
+  if (!__menuLoadPromise) __menuLoadPromise = __loadMenuJson();
+  return __menuLoadPromise;
+}
+
+
+//
+// ================= INVENTORY VIEWMODEL (from engine.js) =================
+// We render the Character panel from a *view model* sent by engine.js via
+// CustomEvent("hero:inventory-changed").
+//
+// Why event-based?
+//   - Keeps UI decoupled from engine internal state.
+//   - Prevents accidental breakage if engine state shape changes.
+//   - Allows future overlays (battle/help/etc.) without importing engine.
+//
+// The view model shape (see engine.js buildInventoryView()):
+//   { slots:[{slot,id,label,type,option}], equip:{1:{...},2:{...},3:{...}}, maxStrength:number }
+// =======================================================================
+let __heroInvView = { slots: [], equip: {1:{},2:{},3:{}}, spellbook: [], maxStrength: 0 };
+
+
+function __clamp(n,a,b){ return Math.max(a, Math.min(b, n)); }
 
 function __battleActive(){
-  try{ return !!(window.HeroEngine && window.HeroEngine.state && window.HeroEngine.state.mode === "BATTLE"); }catch(_){}
+  const bf = document.getElementById("battlefield");
+  if (bf && bf.style.display !== "none") return true;
+  try{
+    return !!(window.HeroEngine && window.HeroEngine.state && window.HeroEngine.state.mode === "BATTLE");
+  }catch(_){}
   return false;
 }
 
-async function __ensureMenuLabels(){
+async function __loadMenuJson(){
   if (__heroMenuLabels) return __heroMenuLabels;
-  let labels = Object.create(null);
+  const labels = Object.create(null);
   try{
     const r = await fetch(HERO_MENU_URL + "?v=" + Date.now(), { cache: "no-store" });
     if (r.ok){
@@ -1111,3 +1124,4 @@ window.HeroHelp = { open: __openHelp, close: __closeHelp };
 /* ================= END HELP MENU ================= */
 
 })();
+
