@@ -587,13 +587,15 @@ body{
 
 @media (max-width: 720px){
   #statsfield__inner{
-    font-size: 12px;
-    gap: 6px;
-    flex-wrap: wrap;
-    justify-content: center;
+    font-size: 11px;
+    gap: 4px;
+    flex-wrap: nowrap;
+    justify-content: space-between;
+    letter-spacing: -0.2px;
   }
   #statsfield__inner .stat{
-    flex: 1 1 45%;
+    flex: 0 1 auto;
+    gap: 4px;
   }
   .statsHelp{
     width: 24px;

@@ -386,10 +386,12 @@ if (actionsJson || legacyAction){
 
     const textH = Math.max(80, Math.round(r.height * TEXT_HEIGHT_FRAC));
     const dim = clampWidthToMin(r);
+    const tfTop = Math.round(r.bottom - textH);
+    const tfHeight = Math.max(80, Math.round(window.innerHeight - tfTop));
     tf.style.width = dim.width + "px";
-    tf.style.height = textH + "px";
+    tf.style.height = tfHeight + "px";
     tf.style.left = dim.left + "px";
-    tf.style.top = Math.round(r.bottom - textH) + "px";
+    tf.style.top = tfTop + "px";
 
     const statsH = Math.max(30, Math.round(r.height * STATS_HEIGHT_FRAC));
     sf.style.width = dim.width + "px";

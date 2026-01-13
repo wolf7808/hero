@@ -220,10 +220,10 @@
     try{ localStorage.setItem(key, String(Math.max(0, Math.min(1, Number(v)||0)))); }catch(_){}
   }
 
-  let musicVolume = __readVol(LS_MUSIC_VOL, 0.6);
+  let musicVolume = __readVol(LS_MUSIC_VOL, 0.5);
   // NOTE: musicVolume is persisted separately from save/load.
   // Save/Load must NEVER overwrite it; they only restart playback.
-  let sfxVolume   = __readVol(LS_SFX_VOL, 0.9);
+  let sfxVolume   = __readVol(LS_SFX_VOL, 1.0);
 
   // Background music element is created lazily after a user gesture (mobile autoplay policies).
   let __musicEl = null;
