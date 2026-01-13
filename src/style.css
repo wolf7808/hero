@@ -277,20 +277,21 @@ body{
   min-height: 0;
   display: flex;
   flex-direction: column;
-  justify-content: center;
-  gap: clamp(6px, 1vw, 10px);
+  justify-content: flex-start;
+  gap: 6px;
 }
 
 .bf-log{
   flex: 0 0 auto;
   width: 96%;
-  margin: auto auto 0 auto;
-  font-size: clamp(8px, 0.8vw, 9px);
-  line-height: 1.2;
+  margin: 0 auto;
+  font-size: 8px;
+  line-height: 1.1;
   overflow: hidden;
   user-select: none;
 
-  padding: 8px 10px;
+  height: 86px;
+  padding: 6px 8px;
   border-radius: 10px;
 
   background: var(--hatch-mid), rgba(0,0,0,0.05);
@@ -315,29 +316,26 @@ body{
 .bf-grid{
   display: grid;
   width: 100%;
-  grid-template-columns: minmax(120px, 1fr) 112px minmax(120px, 1fr);
-  gap: 4px;
-  align-items: stretch;
+  grid-template-columns: 36% 28% 36%;
+  gap: 6px;
+  align-items: center;
   justify-items: center;
+  flex: 1 1 auto;
+  min-height: 0;
 }
 
 .bf-playerCol{
   width: 100%;
-  min-width: 120px;
   display: flex;
   align-items: center;
   justify-content: center;
-  height: 100%;
 }
 .bf-centerCol{
-  width: 112px;
-  max-width: 112px;
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: clamp(6px, 1vw, 10px);
-  height: 100%;
+  gap: 6px;
 }
 
 .bf-player, .bf-enemies{
@@ -346,7 +344,7 @@ body{
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: clamp(4px, 0.8vw, 8px);
+  gap: 6px;
   min-width: 0;
   max-width: 100%;
 }
@@ -368,7 +366,7 @@ body{
   display:flex;
   align-items:center;
   justify-content:flex-end;
-  gap: 6px;
+  gap: 4px;
   max-width: 100%;
 }
 
@@ -376,15 +374,15 @@ body{
   display:flex;
   flex-direction:column;
   align-items:flex-end;
-  gap: 3px;
+  gap: 2px;
   min-width: 0;
-  max-width: calc(100% - 16px);
+  max-width: calc(100% - 14px);
 }
 
 .bf-statline{
   display: flex;
   align-items: center;
-  gap: 6px;
+  gap: 4px;
   max-width: 100%;
 }
 .bf-player .bf-statline{ justify-content: flex-start; }
@@ -394,8 +392,8 @@ body{
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 112px;
-  height: 112px;
+  width: min(220px, 100%);
+  height: min(220px, 100%);
   flex: 0 0 auto;
 }
 
