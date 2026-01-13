@@ -283,9 +283,9 @@ body{
 
 .bf-log{
   flex: 0 0 auto;
-  width: 92%;
+  width: 96%;
   margin: auto auto 0 auto;
-  font-size: clamp(8px, 0.9vw, 10px);
+  font-size: clamp(8px, 0.8vw, 9px);
   line-height: 1.2;
   overflow: hidden;
   user-select: none;
@@ -314,8 +314,8 @@ body{
 
 .bf-grid{
   display: grid;
-  grid-template-columns: minmax(0, 1fr) minmax(0, 0.9fr) minmax(0, 1fr);
-  gap: clamp(6px, 1vw, 10px);
+  grid-template-columns: minmax(0, 1fr) clamp(130px, 16vw, 170px) minmax(0, 1fr);
+  gap: 6px;
   align-items: center;
   justify-items: center;
 }
@@ -360,14 +360,14 @@ body{
   display:flex;
   align-items:center;
   justify-content:flex-end;
-  gap: clamp(6px, 0.9vw, 10px);
+  gap: 6px;
 }
 
 .bf-enemyBody{
   display:flex;
   flex-direction:column;
   align-items:flex-end;
-  gap: 4px;
+  gap: 3px;
   min-width: 0;
 }
 
@@ -383,8 +383,8 @@ body{
   display: flex;
   align-items: center;
   justify-content: center;
-  width: calc(352px * 0.4);
-  height: calc(352px * 0.4);
+  width: clamp(120px, 16vw, 170px);
+  height: clamp(120px, 16vw, 170px);
   flex: 0 0 auto;
 }
 
@@ -401,8 +401,15 @@ body{
 }
 
 
-.bf-title{ font-weight: 700; font-size: clamp(10px, 0.9vw, 12px); }
-.bf-val{ font-size: clamp(16px, 1.8vw, 20px); font-variant-numeric: tabular-nums; }
+.bf-title{
+  font-weight: 700;
+  font-size: clamp(9px, 0.8vw, 11px);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 100%;
+}
+.bf-val{ font-size: clamp(14px, 1.6vw, 18px); font-variant-numeric: tabular-nums; }
 
 .bf-target{
   display:flex;
@@ -422,16 +429,16 @@ body{
   display:flex;
   align-items:center;
   justify-content:center;
-  gap: clamp(8px, 1vw, 12px);
+  gap: 6px;
   width: 100%;
 }
 
 .bf-btn{
-  padding: 5px 8px;
+  padding: 4px 7px;
   border-radius: 10px;
   border: none;
   color: var(--ink);
-  font-size: clamp(10px, 0.9vw, 12px);
+  font-size: clamp(9px, 0.8vw, 11px);
 }
 
 #err{
