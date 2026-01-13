@@ -836,6 +836,10 @@ if (typ === "equip" && (opt === 1 || opt === 2 || opt === 3)){
     bf.style.top = top + "px";
     bf.style.width = w + "px";
     bf.style.height = h + "px";
+    const baseW = 512;
+    const baseH = 320;
+    const scale = Math.max(0.65, Math.min(w / baseW, h / baseH));
+    bf.style.setProperty("--bf-scale", scale.toFixed(3));
 
     if (inner) inner.style.pointerEvents = "auto";
   }
