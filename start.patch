@@ -1,8 +1,8 @@
 diff --git a/src/start.js b/src/start.js
-index f8e8321c9e388d55ca2260cc3a162adae12901cd..8701edc45c9ba3badee52c43f890939d54cca986 100644
+index f8e8321c9e388d55ca2260cc3a162adae12901cd..139a0b88f3aa36ccb79cde439492f7db017ca070 100644
 --- a/src/start.js
 +++ b/src/start.js
-@@ -1,92 +1,131 @@
+@@ -1,92 +1,133 @@
  // start.js
  // Minimal start menu: plain centered words (no background).
  // Items are read from Menu.json:
@@ -32,6 +32,8 @@ index f8e8321c9e388d55ca2260cc3a162adae12901cd..8701edc45c9ba3badee52c43f890939d
 +      return null;
 +    },
 +    () => "./assets/",
++    () => "https://raw.githubusercontent.com/wolf7808/hero/main/assets/",
++    () => "https://cdn.jsdelivr.net/gh/wolf7808/hero@main/assets/",
 +    () => "https://raw.githubusercontent.com/wolf7808/Hero/main/assets/",
 +    () => "https://cdn.jsdelivr.net/gh/wolf7808/Hero@main/assets/"
 +  ];

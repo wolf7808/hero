@@ -1,8 +1,8 @@
 diff --git a/src/engine.js b/src/engine.js
-index 7ec98aa765fa359f3e305a4405be39ef500b6cdf..35233b449384ca83d25dc39bf15da8e00dafa415 100644
+index 7ec98aa765fa359f3e305a4405be39ef500b6cdf..926518c79f160f29f12980069a6b5f4fc712dce6 100644
 --- a/src/engine.js
 +++ b/src/engine.js
-@@ -1,49 +1,77 @@
+@@ -1,49 +1,79 @@
  // engine.js (rewrite v2)
  // Owns game state, parses and runs actions, including battle.
  // Stats start at 0 and remain 0 until (stats) is executed.
@@ -49,6 +49,8 @@ index 7ec98aa765fa359f3e305a4405be39ef500b6cdf..35233b449384ca83d25dc39bf15da8e0
 +      return null;
 +    },
 +    () => ASSET_BASE,
++    () => "https://raw.githubusercontent.com/wolf7808/hero/main/assets/",
++    () => "https://cdn.jsdelivr.net/gh/wolf7808/hero@main/assets/",
 +    () => "https://raw.githubusercontent.com/wolf7808/Hero/main/assets/",
 +    () => "https://cdn.jsdelivr.net/gh/wolf7808/Hero@main/assets/"
 +  ];
@@ -91,7 +93,7 @@ index 7ec98aa765fa359f3e305a4405be39ef500b6cdf..35233b449384ca83d25dc39bf15da8e0
          try{
            const u = new URL(src, window.location.href);
            const v = u.searchParams.get("v");
-@@ -382,53 +410,60 @@
+@@ -382,53 +412,60 @@
  
      // Stats.json is used for BOTH:
      // 1) labels for stat keys (top stats panel)

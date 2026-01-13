@@ -1,8 +1,8 @@
 diff --git a/src/textfield.js b/src/textfield.js
-index 980d466816a0a89f366ace356b765199c6f055b9..69348c97b0a3a354b2aa7f8929e2d785952e298a 100644
+index 980d466816a0a89f366ace356b765199c6f055b9..1bfa896284db59bf37576bd80a61e5cdc0736566 100644
 --- a/src/textfield.js
 +++ b/src/textfield.js
-@@ -546,116 +546,154 @@ if (actionsJson || legacyAction){
+@@ -546,116 +546,156 @@ if (actionsJson || legacyAction){
     3) Clicking a dropdown item opens #helpfield (centered overlay):
          __openHelp(key) does:
            - refuses if battle is active (__battleActive()).
@@ -40,6 +40,8 @@ index 980d466816a0a89f366ace356b765199c6f055b9..69348c97b0a3a354b2aa7f8929e2d785
 +    return null;
 +  },
 +  () => "./assets/",
++  () => "https://raw.githubusercontent.com/wolf7808/hero/main/assets/",
++  () => "https://cdn.jsdelivr.net/gh/wolf7808/hero@main/assets/",
 +  () => "https://raw.githubusercontent.com/wolf7808/Hero/main/assets/",
 +  () => "https://cdn.jsdelivr.net/gh/wolf7808/Hero@main/assets/"
 +];
